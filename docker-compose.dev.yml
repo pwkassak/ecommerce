@@ -33,6 +33,10 @@ services:
       DATABASE_URL: postgresql://cubes_user:cubes_password@postgres:5432/cubes_db
       FRONTEND_URL: http://localhost:3002
       CORS_ORIGIN: http://localhost:3002
+      CLICKHOUSE_HOST: http://clickhouse:8123
+      CLICKHOUSE_USER: analytics_user
+      CLICKHOUSE_PASSWORD: analytics_password
+      CLICKHOUSE_DATABASE: analytics
     ports:
       - "5001:5001"
     volumes:
@@ -41,6 +45,7 @@ services:
       - cubes_network_dev
     depends_on:
       - postgres
+      - clickhouse
 
   # Frontend (Development - served by Vite dev server)
   frontend:
@@ -62,8 +67,35 @@ services:
     depends_on:
       - backend
 
+  # ClickHouse Analytics Database
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8-alpine
+    container_name: cubes_analytics_dev
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: analytics
+      CLICKHOUSE_USER: analytics_user
+      CLICKHOUSE_PASSWORD: analytics_password
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9000:9000"  # TCP interface
+    volumes:
+      - clickhouse_data_dev:/var/lib/clickhouse
+      - ./analytics/config.xml:/etc/clickhouse-server/config.d/custom.xml:ro
+      - ./analytics/users.xml:/etc/clickhouse-server/users.d/custom.xml:ro
+      - ./analytics/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - cubes_network_dev
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
 volumes:
   postgres_data_dev:
+    driver: local
+  clickhouse_data_dev:
     driver: local
 
 networks:

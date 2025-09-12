@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <!-- Configuration for development environment -->
+    
+    <!-- Logging configuration -->
+    <logger>
+        <level>information</level>
+        <console>1</console>
+    </logger>
+
+    <!-- HTTP server configuration -->
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+    
+    <!-- Allow connections from Docker network -->
+    <listen_host>::</listen_host>
+    
+    <!-- Performance settings for development -->
+    <max_concurrent_queries>100</max_concurrent_queries>
+    
+    <!-- Disable some features for simpler development setup -->
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+    </query_log>
+    
+    <!-- Enable CORS for web dashboard access -->
+    <http_server_default_response><![CDATA[<html><body>ClickHouse server is running.</body></html>]]></http_server_default_response>
+    
+    <!-- Development-friendly settings -->
+    <max_table_size_to_drop>0</max_table_size_to_drop>
+    <max_partition_size_to_drop>0</max_partition_size_to_drop>
+</clickhouse>

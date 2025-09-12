@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface ProductCardProps {
   product: Product;
@@ -9,16 +10,31 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useCart();
+  const { trackAddToCart, trackButtonClick, trackProductView } = useAnalytics();
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Track analytics event
+    trackAddToCart(product.id, product.name, 1, product.price);
+    trackButtonClick('Add to Cart', `Product Card - ${product.name}`);
+    
     addToCart(product);
+  };
+
+  const handleProductClick = () => {
+    // Track product view when user clicks on product
+    trackProductView(product.id, product.name, product.category, product.price);
   };
 
   return (
     <div className="product-card">
-      <Link to={`/products/${product.id}`} className="product-link">
+      <Link 
+        to={`/products/${product.id}`} 
+        className="product-link"
+        onClick={handleProductClick}
+      >
         <div className="product-image">
           <img src={product.imageUrl} alt={product.name} />
           {!product.inStock && <div className="out-of-stock">Out of Stock</div>}

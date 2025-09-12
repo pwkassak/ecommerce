@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { trackProductView, trackAddToCart, trackButtonClick } = useAnalytics();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -20,7 +22,13 @@ const ProductDetailPage: React.FC = () => {
         const response = await fetch(`http://localhost:5001/api/products/${id}`);
         if (response.ok) {
           const productData = await response.json();
-          setProduct(productData.success ? productData.data : null);
+          const prod = productData.success ? productData.data : null;
+          setProduct(prod);
+          
+          // Track product view analytics
+          if (prod) {
+            trackProductView(prod.id, prod.name, prod.category, prod.price);
+          }
         } else {
           setProduct(null);
         }
@@ -38,6 +46,11 @@ const ProductDetailPage: React.FC = () => {
 
   const handleAddToCart = () => {
     if (product) {
+      // Track analytics before adding to cart
+      trackAddToCart(product.id, product.name, quantity, product.price * quantity);
+      trackButtonClick('Add to Cart', `Product Detail - ${product.name}`);
+      
+      // Add to cart
       for (let i = 0; i < quantity; i++) {
         addToCart(product);
       }
@@ -46,6 +59,7 @@ const ProductDetailPage: React.FC = () => {
 
   const handleBuyNow = () => {
     if (product) {
+      trackButtonClick('Buy Now', `Product Detail - ${product.name}`);
       handleAddToCart();
       navigate('/cart');
     }

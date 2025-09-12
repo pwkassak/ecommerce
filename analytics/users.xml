@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <users>
+        <!-- Default user with full access -->
+        <default>
+            <password></password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+        </default>
+        
+        <!-- Analytics user for the application -->
+        <analytics_user>
+            <password>analytics_password</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <access_management>1</access_management>
+            <databases>
+                <analytics>1</analytics>
+                <system>1</system>
+            </databases>
+        </analytics_user>
+        
+        <!-- Read-only user for dashboards -->
+        <analytics_readonly>
+            <password>readonly_password</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>readonly</profile>
+            <quota>default</quota>
+            <databases>
+                <analytics>1</analytics>
+            </databases>
+        </analytics_readonly>
+    </users>
+
+    <profiles>
+        <default>
+            <max_memory_usage>4000000000</max_memory_usage>
+            <max_execution_time>60</max_execution_time>
+            <use_uncompressed_cache>0</use_uncompressed_cache>
+            <load_balancing>random</load_balancing>
+            <enable_http_compression>1</enable_http_compression>
+        </default>
+        
+        <readonly>
+            <readonly>1</readonly>
+            <max_memory_usage>2000000000</max_memory_usage>
+            <max_execution_time>30</max_execution_time>
+            <use_uncompressed_cache>0</use_uncompressed_cache>
+        </readonly>
+    </profiles>
+
+    <quotas>
+        <default>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </default>
+    </quotas>
+</clickhouse>

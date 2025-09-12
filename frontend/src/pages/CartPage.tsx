@@ -1,20 +1,48 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const CartPage: React.FC = () => {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
   const navigate = useNavigate();
+  const { trackCartView, trackRemoveFromCart, trackCheckoutStart, trackButtonClick } = useAnalytics();
+
+  // Track cart view when component mounts
+  useEffect(() => {
+    trackCartView(cart.items.length, cart.total);
+  }, [cart.items.length, cart.total, trackCartView]);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
+      // Find product details for analytics
+      const item = cart.items.find(item => item.product.id === productId);
+      if (item) {
+        trackRemoveFromCart(item.product.id, item.product.name, item.quantity);
+      }
       removeFromCart(productId);
     } else {
       updateQuantity(productId, newQuantity);
     }
   };
 
+  const handleRemoveItem = (productId: string) => {
+    const item = cart.items.find(item => item.product.id === productId);
+    if (item) {
+      trackRemoveFromCart(item.product.id, item.product.name, item.quantity);
+      trackButtonClick('Remove Item', 'Cart Page');
+    }
+    removeFromCart(productId);
+  };
+
+  const handleClearCart = () => {
+    trackButtonClick('Clear Cart', 'Cart Page');
+    clearCart();
+  };
+
   const handleCheckout = () => {
+    trackCheckoutStart(cart.total, cart.items.length);
+    trackButtonClick('Proceed to Checkout', 'Cart Page');
     navigate('/checkout');
   };
 
@@ -43,7 +71,7 @@ const CartPage: React.FC = () => {
           <h1>Your Cart ({cart.items.length} items)</h1>
           <button 
             className="btn btn-secondary clear-cart"
-            onClick={clearCart}
+            onClick={handleClearCart}
           >
             Clear Cart
           </button>
@@ -115,7 +143,7 @@ const CartPage: React.FC = () => {
 
                 <button
                   className="remove-item"
-                  onClick={() => removeFromCart(item.product.id)}
+                  onClick={() => handleRemoveItem(item.product.id)}
                   title="Remove from cart"
                 >
                   ✕

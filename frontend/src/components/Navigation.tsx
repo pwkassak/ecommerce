@@ -42,6 +42,9 @@ const Navigation: React.FC = () => {
           <Link to="/about" className="nav-link" onClick={() => setIsMenuOpen(false)}>
             About
           </Link>
+          <Link to="/analytics" className="nav-link" onClick={() => setIsMenuOpen(false)}>
+            Analytics
+          </Link>
         </div>
 
         <div className="nav-actions">

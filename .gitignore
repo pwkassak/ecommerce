@@ -116,6 +116,8 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 *$py.class
+test-results/
+playwright-report/
 
 # Backup files
 *.bak

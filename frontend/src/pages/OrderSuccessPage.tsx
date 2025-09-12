@@ -1,9 +1,28 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAnalytics } from '../hooks/useAnalytics';
+import { useCart } from '../contexts/CartContext';
 
 const OrderSuccessPage: React.FC = () => {
   const location = useLocation();
   const { orderId, orderTotal } = location.state || {};
+  const { track } = useAnalytics();
+  const { clearCart } = useCart();
+
+  useEffect(() => {
+    // Clear cart after successful order
+    clearCart();
+    
+    // Track order success page view
+    track({
+      event_type: 'order_success',
+      event_name: 'Order Success Viewed',
+      properties: {
+        order_id: orderId,
+        order_total: orderTotal
+      }
+    });
+  }, [orderId, orderTotal, track, clearCart]);
 
   return (
     <div className="order-success-page">

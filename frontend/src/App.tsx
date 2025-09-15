@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { GrowthBookProvider } from '@growthbook/growthbook-react';
 import { CartProvider } from './contexts/CartContext';
 import { usePageTracking } from './hooks/usePageTracking';
+import growthbook from './services/growthbook';
 import Navigation from './components/Navigation';
 import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
@@ -38,11 +40,13 @@ function AppContent() {
 
 function App() {
   return (
-    <CartProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </CartProvider>
+    <GrowthBookProvider growthbook={growthbook}>
+      <CartProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </CartProvider>
+    </GrowthBookProvider>
   );
 }
 

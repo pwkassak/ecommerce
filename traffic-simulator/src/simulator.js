@@ -41,10 +41,13 @@ class TrafficSimulator {
     if (!this.isRunning) return;
 
     const sessionId = ++this.sessionCounter;
+    let browser = null;
+    let session = null;
+
     logger.info(`Launching browser session ${sessionId}`);
 
     try {
-      const browser = await chromium.launch({
+      browser = await chromium.launch({
         headless: true,
         args: [
           '--no-sandbox',
@@ -55,22 +58,24 @@ class TrafficSimulator {
         ]
       });
 
-      const session = new BrowserSession(sessionId, browser, this.config);
+      session = new BrowserSession(sessionId, browser, this.config);
       this.activeSessions.add(session);
+
+      // Add timeout protection - force cleanup if session exceeds max duration
+      const sessionTimeout = setTimeout(async () => {
+        logger.warn(`Session ${sessionId} exceeded max duration, forcing cleanup`);
+        if (session) {
+          await session.stop();
+        }
+      }, (this.config.sessionDurationMax + 60) * 1000); // Max duration + 1 minute buffer
 
       // Run the session
       await session.run();
 
-      // Clean up
-      this.activeSessions.delete(session);
-      await browser.close();
+      // Clear timeout since session completed normally
+      clearTimeout(sessionTimeout);
 
       logger.info(`Session ${sessionId} completed`);
-
-      // Schedule next session after delay
-      if (this.isRunning) {
-        setTimeout(() => this.launchSession(), this.config.restartDelay);
-      }
 
     } catch (error) {
       logger.error(`Session ${sessionId} failed:`, {
@@ -78,8 +83,20 @@ class TrafficSimulator {
         stack: error.stack,
         name: error.name
       });
+    } finally {
+      // Clean up session from active set
+      if (session) {
+        this.activeSessions.delete(session);
+      }
 
-      // Still schedule next session on error
+      // ALWAYS close browser, even on error
+      if (browser) {
+        await browser.close().catch(err =>
+          logger.error(`Failed to close browser for session ${sessionId}:`, err.message)
+        );
+      }
+
+      // Schedule next session after delay
       if (this.isRunning) {
         setTimeout(() => this.launchSession(), this.config.restartDelay);
       }

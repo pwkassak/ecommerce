@@ -131,6 +131,12 @@ class BrowserSession {
       });
       throw error;
     } finally {
+      // Clean up in correct order: page -> context (browser closed by simulator)
+      if (this.page) {
+        await this.page.close().catch(err =>
+          logger.debug(`Failed to close page for session ${this.sessionId}:`, err.message)
+        );
+      }
       if (this.context) {
         await this.context.close().catch(err =>
           logger.warn(`Failed to close context for session ${this.sessionId}:`, err.message)
@@ -168,6 +174,15 @@ class BrowserSession {
 
   async stop() {
     this.isRunning = false;
+
+    // Add small delay to allow current action to complete
+    await this.sleep(100);
+
+    if (this.page) {
+      await this.page.close().catch(err =>
+        logger.debug(`Failed to close page during stop for session ${this.sessionId}:`, err.message)
+      );
+    }
     if (this.context) {
       await this.context.close().catch(err =>
         logger.warn(`Failed to close context during stop for session ${this.sessionId}:`, err.message)

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -98,12 +96,13 @@ services:
       dockerfile: Dockerfile
     container_name: cubes_traffic_simulator_dev
     restart: unless-stopped
+    init: true
     environment:
-      CONCURRENT_BROWSERS: 20
+      CONCURRENT_BROWSERS: 25
       SESSION_DURATION_MIN: 10
       SESSION_DURATION_MAX: 45
       TARGET_URL: http://frontend:3002
-      RESTART_DELAY: 500
+      RESTART_DELAY: 2000
       LOG_LEVEL: info
       NODE_ENV: development
     volumes:
@@ -118,11 +117,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: '1.0'
+          memory: 3G
+          cpus: '2.0'
         reservations:
-          memory: 512M
-          cpus: '0.5'
+          memory: 1G
+          cpus: '1.0'
 
 volumes:
   postgres_data_dev:

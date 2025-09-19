@@ -11,21 +11,6 @@ export const usePageTracking = () => {
   // Set up analytics manager for GrowthBook integration
   useEffect(() => {
     setAnalyticsManager(analytics);
-    
-    // TODO: REMOVE_DEBUG_LOGS - Remove after experiment debugging
-    // Connect anonymous ID to GrowthBook for proper experiment targeting
-    const anonymousId = localStorage.getItem('analytics_anonymous_id');
-    if (anonymousId) {
-      console.log('🔍 DEBUG_EXPERIMENT: Setting GrowthBook anonymous_id:', anonymousId);
-      // Import GrowthBook to set user attributes
-      import('../services/growthbook').then(({ default: growthbook }) => {
-        growthbook.setAttributes({
-          anonymous_id: anonymousId,
-          id: anonymousId  // Some experiments might use 'id' instead
-        });
-        console.log('🔍 DEBUG_EXPERIMENT: Updated GrowthBook attributes:', growthbook.getAttributes());
-      });
-    }
   }, [analytics]);
 
   useEffect(() => {

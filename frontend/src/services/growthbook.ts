@@ -1,5 +1,5 @@
 import { GrowthBook } from "@growthbook/growthbook";
-import { autoAttributesPlugin } from "@growthbook/growthbook/plugins";
+import { v4 as uuidv4 } from 'uuid';
 
 // Get access to the analytics manager instance
 let analyticsManagerInstance: any = null;
@@ -25,10 +25,31 @@ const getGrowthBookApiHost = (): string => {
   return 'http://localhost:3100';
 };
 
+// Function to get or create anonymous ID (similar to useAnalytics.ts)
+const getOrCreateAnonymousId = (): string => {
+  const existingId = localStorage.getItem('analytics_anonymous_id');
+  if (existingId) {
+    console.log('🔍 DEBUG_ANON_ID: Found existing anonymous ID for GrowthBook:', existingId);
+    return existingId;
+  }
+
+  const newId = uuidv4();
+  localStorage.setItem('analytics_anonymous_id', newId);
+  console.log('🔍 DEBUG_ANON_ID: Created new anonymous ID for GrowthBook:', newId);
+  return newId;
+};
+
+// Get or create the anonymous ID before initializing GrowthBook
+const anonymousId = getOrCreateAnonymousId();
+
 const growthbook = new GrowthBook({
   apiHost: getGrowthBookApiHost(),
   clientKey: "sdk-0YSHIPiuOSzNPq",
   enableDevMode: true,
+  attributes: {
+    anonymous_id: anonymousId,
+    id: anonymousId  // Also set 'id' for compatibility with any experiments that might use it
+  },
   trackingCallback: async (experiment, result) => {
     // Integrate with existing ClickHouse analytics
     console.log("🧪 GrowthBook Experiment Viewed", {
@@ -71,7 +92,6 @@ const growthbook = new GrowthBook({
       console.warn('Analytics manager not available for experiment tracking');
     }
   },
-  plugins: [autoAttributesPlugin()],
 });
 
 // Initialize GrowthBook to establish connection with the dashboard

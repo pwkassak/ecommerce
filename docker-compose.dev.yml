@@ -99,11 +99,11 @@ services:
     container_name: cubes_traffic_simulator_dev
     restart: unless-stopped
     environment:
-      CONCURRENT_BROWSERS: 10
-      SESSION_DURATION_MIN: 15
+      CONCURRENT_BROWSERS: 20
+      SESSION_DURATION_MIN: 10
       SESSION_DURATION_MAX: 45
       TARGET_URL: http://frontend:3002
-      RESTART_DELAY: 1000
+      RESTART_DELAY: 500
       LOG_LEVEL: info
       NODE_ENV: development
     volumes:

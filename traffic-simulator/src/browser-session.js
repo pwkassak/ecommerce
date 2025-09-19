@@ -110,8 +110,8 @@ class BrowserSession {
           await this.performRandomAction();
           this.actionsCompleted++;
           
-          // Random delay between actions (0.5-2 seconds)
-          const delay = Math.random() * 1500 + 500;
+          // Random delay between actions (0.2-0.8 seconds)
+          const delay = Math.random() * 600 + 200;
           await this.sleep(delay);
           
         } catch (actionError) {

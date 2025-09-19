@@ -15,8 +15,8 @@ import type {
 class ClickHouseService {
   private client: ClickHouseClient | null = null;
   private eventQueue: AnalyticsEvent[] = [];
-  private batchSize = 100;
-  private flushInterval = 5000; // 5 seconds
+  private batchSize = 200;
+  private flushInterval = 2000; // 2 seconds
   private batchTimer: NodeJS.Timeout | null = null;
 
   constructor() {

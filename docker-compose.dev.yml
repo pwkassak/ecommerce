@@ -98,11 +98,11 @@ services:
     restart: unless-stopped
     init: true
     environment:
-      CONCURRENT_BROWSERS: 25
+      CONCURRENT_BROWSERS: 50
       SESSION_DURATION_MIN: 10
       SESSION_DURATION_MAX: 45
       TARGET_URL: http://frontend:3002
-      RESTART_DELAY: 2000
+      RESTART_DELAY: 3000
       LOG_LEVEL: info
       NODE_ENV: development
     volumes:
@@ -117,11 +117,11 @@ services:
     deploy:
       resources:
         limits:
+          memory: 6G
+          cpus: '4.0'
+        reservations:
           memory: 3G
           cpus: '2.0'
-        reservations:
-          memory: 1G
-          cpus: '1.0'
 
 volumes:
   postgres_data_dev:

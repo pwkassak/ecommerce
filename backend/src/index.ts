@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
-import analyticsRoutes from './routes/analytics-working.js';
+import analyticsRoutes from './routes/analytics.js';
 
 dotenv.config();
 

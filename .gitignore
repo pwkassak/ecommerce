@@ -76,6 +76,10 @@ temp/
 logs
 *.log
 
+# Traffic Simulator
+traffic-simulator/logs/
+traffic-simulator/node_modules/
+
 # Docker
 docker-compose.override.yml
 .dockerignore

@@ -56,7 +56,6 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      VITE_API_URL: http://localhost:5001/api
     ports:
       - "3002:3002"  # Vite dev server with HTTPS
     volumes:
@@ -91,6 +90,39 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+
+  # Traffic Simulator
+  traffic-simulator:
+    build:
+      context: ./traffic-simulator
+      dockerfile: Dockerfile
+    container_name: cubes_traffic_simulator_dev
+    restart: unless-stopped
+    environment:
+      CONCURRENT_BROWSERS: 10
+      SESSION_DURATION_MIN: 15
+      SESSION_DURATION_MAX: 45
+      TARGET_URL: http://frontend:3002
+      RESTART_DELAY: 1000
+      LOG_LEVEL: info
+      NODE_ENV: development
+    volumes:
+      - ./traffic-simulator/logs:/app/logs
+    networks:
+      - cubes_network_dev
+    extra_hosts:
+      - "localhost:host-gateway"
+    depends_on:
+      - frontend
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
 
 volumes:
   postgres_data_dev:

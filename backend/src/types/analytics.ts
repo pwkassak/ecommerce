@@ -132,3 +132,20 @@ export interface EventBatch {
   timestamp: string;
   count: number;
 }
+
+export interface ExperimentAssignment {
+  assignment_id?: string;
+  timestamp?: string;
+  session_id: string;
+  user_id?: string | null;
+  anonymous_id: string;
+  experiment_id: string;
+  variation_id: string;
+  experiment_name?: string | null;
+  variation_name?: string | null;
+  user_agent: string;
+  ip_address: string;
+  client_timestamp: string;
+  server_timestamp?: string;
+  country?: string;
+}

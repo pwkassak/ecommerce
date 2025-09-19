@@ -1,0 +1,32 @@
+{
+  "name": "ecommerce-traffic-simulator",
+  "version": "1.0.0",
+  "description": "Headless browser traffic simulator for ecommerce testing",
+  "main": "src/simulator.js",
+  "scripts": {
+    "start": "node src/simulator.js",
+    "dev": "NODE_ENV=development node src/simulator.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "traffic-simulator",
+    "playwright",
+    "headless-browser",
+    "testing",
+    "ecommerce"
+  ],
+  "author": "Ecommerce Testing Team",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.49.0",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  }
+}

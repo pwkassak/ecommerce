@@ -1,8 +1,17 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID as uuidv4 } from 'crypto';
 import { clickHouseService } from '../services/clickhouse.js';
-import type { AnalyticsEvent, PageViewEvent, ProductEvent, AnalyticsQuery } from '../types/analytics.js';
+import type { AnalyticsEvent, PageViewEvent, ProductEvent, AnalyticsQuery, ExperimentAssignment } from '../types/analytics.js';
 import { ApiResponse } from '../types/index.js';
+
+// Helper function to clean IPv6-formatted IPv4 addresses for ClickHouse
+const formatIpAddress = (ip: string): string => {
+  // Convert "::ffff:192.168.65.1" to "192.168.65.1"
+  if (ip.startsWith('::ffff:')) {
+    return ip.replace('::ffff:', '');
+  }
+  return ip;
+};
 
 const router = Router();
 
@@ -24,7 +33,7 @@ const parseAnalyticsRequest = (req: Request, res: Response, next: NextFunction) 
   req.analytics = {
     timestamp: new Date().toISOString(),
     user_agent: req.get('User-Agent') || '',
-    ip_address: req.ip || '127.0.0.1',
+    ip_address: formatIpAddress(req.ip || '127.0.0.1'),
     server_timestamp: new Date().toISOString()
   };
   next();
@@ -213,6 +222,64 @@ router.post('/page-view', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to track page view',
+      data: null
+    });
+  }
+});
+
+// POST /api/analytics/experiment-assignment - Track experiment assignment
+router.post('/experiment-assignment', async (req: Request, res: Response) => {
+  try {
+    const {
+      session_id,
+      user_id = null,
+      anonymous_id,
+      experiment_id,
+      variation_id,
+      experiment_name = null,
+      variation_name = null,
+      client_timestamp
+    } = req.body;
+
+    // Validate required fields
+    if (!session_id || !anonymous_id || !experiment_id || !variation_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: session_id, anonymous_id, experiment_id, variation_id',
+        data: null
+      });
+    }
+
+    const assignment: ExperimentAssignment = {
+      assignment_id: uuidv4(),
+      timestamp: req.analytics.timestamp,
+      session_id,
+      user_id,
+      anonymous_id,
+      experiment_id,
+      variation_id,
+      experiment_name,
+      variation_name,
+      user_agent: req.analytics.user_agent,
+      ip_address: req.analytics.ip_address,
+      client_timestamp: client_timestamp || req.analytics.timestamp,
+      server_timestamp: req.analytics.server_timestamp
+    };
+
+    await clickHouseService.trackExperimentAssignment(assignment);
+
+    const response: ApiResponse<{ assignment_id: string }> = {
+      success: true,
+      message: 'Experiment assignment tracked successfully',
+      data: { assignment_id: assignment.assignment_id! }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error tracking experiment assignment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to track experiment assignment',
       data: null
     });
   }

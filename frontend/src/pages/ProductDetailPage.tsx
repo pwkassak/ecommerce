@@ -19,7 +19,7 @@ const ProductDetailPage: React.FC = () => {
       setLoading(true);
       try {
         // Fetch product from backend API
-        const response = await fetch(`http://localhost:5001/api/products/${id}`);
+        const response = await fetch(`/api/products/${id}`);
         if (response.ok) {
           const productData = await response.json();
           const prod = productData.success ? productData.data : null;

@@ -8,7 +8,8 @@ import type {
   DashboardMetrics,
   ConversionFunnel,
   TopProduct,
-  EventBatch
+  EventBatch,
+  ExperimentAssignment
 } from '../types/analytics.js';
 
 class ClickHouseService {
@@ -26,6 +27,15 @@ class ClickHouseService {
   // Helper function to convert JavaScript ISO timestamp to ClickHouse format
   private formatTimestamp(isoString: string): string {
     // Convert "2025-09-12T13:28:53.204Z" to "2025-09-12 13:28:53.204"
+    // Handle both ISO string and already formatted timestamps
+    if (!isoString) return new Date().toISOString().replace('T', ' ').replace('Z', '');
+
+    // If already formatted, return as-is
+    if (isoString.includes(' ') && !isoString.includes('T')) {
+      return isoString;
+    }
+
+    // Convert ISO to ClickHouse DateTime64 format
     return isoString.replace('T', ' ').replace('Z', '');
   }
 
@@ -39,15 +49,30 @@ class ClickHouseService {
   }
 
   private initializeClient(): ClickHouseClient {
+    const clientId = this.client ? `existing-${Date.now()}` : `new-${Date.now()}`;
+    console.log('DEBUG: ClickHouse client:', this.client ? 'reusing existing' : 'creating new', 'ID:', clientId);
+    console.log('DEBUG: Client connection state:', this.client ? 'active' : 'inactive');
+    console.log('DEBUG: Batch timer running:', !!this.batchTimer);
+    
     if (!this.client) {
-      this.client = createClient({
-        host: process.env.CLICKHOUSE_HOST || 'http://localhost:8123',
+      const config = {
+        host: process.env.CLICKHOUSE_HOST || 'http://clickhouse:8123',
         username: process.env.CLICKHOUSE_USER || 'analytics_user',
         password: process.env.CLICKHOUSE_PASSWORD || 'analytics_password',
         database: process.env.CLICKHOUSE_DATABASE || 'analytics',
+      };
+      console.log('DEBUG: Actual env vars:', {
+        host: process.env.CLICKHOUSE_HOST,
+        user: process.env.CLICKHOUSE_USER,
+        db: process.env.CLICKHOUSE_DATABASE
+      });
+      console.log('DEBUG: Final config:', config);
+      
+      this.client = createClient({
+        ...config,
         clickhouse_settings: {
           async_insert: 1,
-          wait_for_async_insert: 0,
+          wait_for_async_insert: 1,
         }
       });
       
@@ -81,51 +106,106 @@ class ClickHouseService {
   }
 
   private async insertEventsBatch(events: AnalyticsEvent[]): Promise<void> {
+    const timestamp = Date.now();
+    console.log('DEBUG: === insertEventsBatch START ===', timestamp, 'events:', events.length);
     if (events.length === 0) return;
 
     const client = this.initializeClient();
-    await client.insert({
-      table: 'events',
-      values: events,
-      format: 'JSONEachRow',
-    });
+    console.log('DEBUG: Client state before batch insert:', !!this.client, 'at', Date.now());
+
+    try {
+      // Log the first event for debugging
+      if (events.length > 0) {
+        console.log('DEBUG: Sample event structure:', JSON.stringify(events[0], null, 2));
+      }
+
+      await client.insert({
+        table: 'events',
+        values: events,
+        format: 'JSONEachRow',
+      });
+      console.log('DEBUG: Batch insert successful at', Date.now());
+    } catch (error: any) {
+      console.error('DEBUG: Batch insert failed at', Date.now());
+      console.error('ERROR Details:', error.message);
+      console.error('ERROR Type:', error.constructor.name);
+
+      // Log problematic events for debugging
+      if (events.length > 0) {
+        console.error('First event that failed:', JSON.stringify(events[0], null, 2));
+      }
+
+      throw error;
+    }
+    console.log('DEBUG: === insertEventsBatch END ===', Date.now());
   }
 
   // Public API methods
 
   async trackEvent(event: AnalyticsEvent): Promise<void> {
-    // Add server timestamp and defaults with proper formatting
-    const now = new Date().toISOString();
-    const enrichedEvent: AnalyticsEvent = {
-      ...event,
-      timestamp: event.timestamp ? this.formatTimestamp(event.timestamp) : this.formatTimestamp(now),
-      server_timestamp: this.formatTimestamp(now),
-      currency: event.currency || 'USD',
-      properties: event.properties || '{}'
-    };
+    try {
+      // Add server timestamp and defaults with proper formatting
+      const now = new Date().toISOString();
 
-    // Add to queue for batch processing
-    this.eventQueue.push(enrichedEvent);
+      const enrichedEvent: AnalyticsEvent = {
+        ...event,
+        timestamp: event.timestamp ? this.formatTimestamp(event.timestamp) : this.formatTimestamp(now),
+        server_timestamp: this.formatTimestamp(now),
+        ip_address: this.formatIpAddress(event.ip_address),
+        currency: event.currency || 'USD',
+        properties: event.properties || '{}',
+        // Ensure client_timestamp is properly formatted if present
+        client_timestamp: event.client_timestamp ? this.formatTimestamp(event.client_timestamp) : this.formatTimestamp(now)
+      };
 
-    // If queue is full, flush immediately
-    if (this.eventQueue.length >= this.batchSize) {
-      await this.flushEventQueue();
+      console.log('DEBUG: Enriched event before queueing:', {
+        eventId: enrichedEvent.event_id,
+        timestamp: enrichedEvent.timestamp,
+        server_timestamp: enrichedEvent.server_timestamp,
+        client_timestamp: enrichedEvent.client_timestamp
+      });
+
+      // Add to queue for batch processing
+      this.eventQueue.push(enrichedEvent);
+
+      // If queue is full, flush immediately
+      if (this.eventQueue.length >= this.batchSize) {
+        await this.flushEventQueue();
+      }
+    } catch (error) {
+      console.error('ERROR: trackEvent failed:', error);
+      console.error('ERROR: Problematic event:', JSON.stringify(event, null, 2));
+      throw error;
     }
   }
 
   async trackPageView(pageView: PageViewEvent): Promise<void> {
+    const timestamp = Date.now();
+    console.log('DEBUG: === trackPageView START ===', timestamp);
+    console.log('DEBUG: Page view input:', pageView);
+    
     // Format timestamp for ClickHouse compatibility
     const formattedPageView = {
       ...pageView,
       timestamp: this.formatTimestamp(pageView.timestamp)
     };
+    console.log('DEBUG: Formatted page view:', formattedPageView);
     
     const client = this.initializeClient();
-    await client.insert({
-      table: 'page_views',
-      values: [formattedPageView],
-      format: 'JSONEachRow',
-    });
+    console.log('DEBUG: Client state before page view insert:', !!this.client, 'at', Date.now());
+    
+    try {
+      await client.insert({
+        table: 'page_views',
+        values: [formattedPageView],
+        format: 'JSONEachRow',
+      });
+      console.log('DEBUG: Page view insert successful at', Date.now());
+    } catch (error) {
+      console.error('DEBUG: Page view insert failed at', Date.now(), ':', error);
+      throw error;
+    }
+    console.log('DEBUG: === trackPageView END ===', Date.now());
   }
 
   async trackProductEvent(productEvent: ProductEvent): Promise<void> {
@@ -141,6 +221,48 @@ class ClickHouseService {
       values: [formattedProductEvent],
       format: 'JSONEachRow',
     });
+  }
+
+  async trackExperimentAssignment(assignment: ExperimentAssignment): Promise<void> {
+    const timestamp = Date.now();
+    console.log('DEBUG: === trackExperimentAssignment START ===', timestamp);
+    console.log('DEBUG: Experiment assignment input:', assignment);
+    
+    // Add server timestamp and defaults with proper formatting
+    const now = new Date().toISOString();
+    const enrichedAssignment: ExperimentAssignment = {
+      assignment_id: assignment.assignment_id,
+      session_id: assignment.session_id,
+      user_id: assignment.user_id,
+      anonymous_id: assignment.anonymous_id,
+      experiment_id: assignment.experiment_id,
+      variation_id: assignment.variation_id,
+      experiment_name: assignment.experiment_name,
+      variation_name: assignment.variation_name,
+      user_agent: assignment.user_agent,
+      country: assignment.country || '',
+      timestamp: assignment.timestamp ? this.formatTimestamp(assignment.timestamp) : this.formatTimestamp(now),
+      server_timestamp: this.formatTimestamp(now),
+      client_timestamp: assignment.client_timestamp ? this.formatTimestamp(assignment.client_timestamp) : this.formatTimestamp(now),
+      ip_address: this.formatIpAddress(assignment.ip_address)
+    };
+    console.log('DEBUG: Formatted assignment:', enrichedAssignment);
+
+    const client = this.initializeClient();
+    console.log('DEBUG: Client state before experiment assignment insert:', !!this.client, 'at', Date.now());
+    
+    try {
+      await client.insert({
+        table: 'experiment_assignments',
+        values: [enrichedAssignment],
+        format: 'JSONEachRow',
+      });
+      console.log('DEBUG: Experiment assignment insert successful at', Date.now());
+    } catch (error) {
+      console.error('DEBUG: Experiment assignment insert failed at', Date.now(), ':', error);
+      throw error;
+    }
+    console.log('DEBUG: === trackExperimentAssignment END ===', Date.now());
   }
 
   async getDashboardMetrics(query: AnalyticsQuery = {}): Promise<DashboardMetrics> {

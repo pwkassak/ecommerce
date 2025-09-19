@@ -1,48 +1,87 @@
 import { GrowthBook } from "@growthbook/growthbook";
 import { autoAttributesPlugin } from "@growthbook/growthbook/plugins";
 
-// Import the analytics manager to integrate with existing analytics
-let analyticsManager: any = null;
+// Get access to the analytics manager instance
+let analyticsManagerInstance: any = null;
 
-// Lazy load analytics manager to avoid circular dependencies
-const getAnalyticsManager = async () => {
-  if (!analyticsManager) {
-    const { useAnalytics } = await import('../hooks/useAnalytics');
-    // Note: In a real app, you'd want to get the actual manager instance
-    // For now, we'll use console.log as fallback and the analytics can be integrated later
+// Function to get the analytics manager instance
+const getAnalyticsManager = () => {
+  return analyticsManagerInstance;
+};
+
+// Function to set the analytics manager (called from the component that uses analytics)
+export const setAnalyticsManager = (manager: any) => {
+  analyticsManagerInstance = manager;
+};
+
+// Function to detect the correct GrowthBook API host based on environment
+const getGrowthBookApiHost = (): string => {
+  // Check if we're being accessed from inside Docker (traffic simulator)
+  if (window.location.hostname === 'frontend') {
+    // Traffic simulator browsers - use host.docker.internal to reach host
+    return 'http://host.docker.internal:3100';
   }
-  return analyticsManager;
+  // Host browsers - use localhost
+  return 'http://localhost:3100';
 };
 
 const growthbook = new GrowthBook({
-  apiHost: "http://localhost:3100",
+  apiHost: getGrowthBookApiHost(),
   clientKey: "sdk-0YSHIPiuOSzNPq",
   enableDevMode: true,
   trackingCallback: async (experiment, result) => {
     // Integrate with existing ClickHouse analytics
-    console.log("Viewed Experiment", {
+    console.log("🧪 GrowthBook Experiment Viewed", {
       experimentId: experiment.key,
       variationId: result.key,
       experimentName: experiment.name,
       variationName: result.name
     });
 
-    // TODO: Later we can integrate this with the analytics system like:
-    // const analytics = await getAnalyticsManager();
-    // if (analytics) {
-    //   analytics.track({
-    //     event_type: 'experiment',
-    //     event_name: 'Experiment Viewed',
-    //     properties: {
-    //       experiment_id: experiment.key,
-    //       variation_id: result.key,
-    //       experiment_name: experiment.name,
-    //       variation_name: result.name
-    //     }
-    //   });
-    // }
+    // TODO: REMOVE_DEBUG_LOGS - Remove after experiment debugging
+    console.log('🔍 DEBUG_EXPERIMENT: Experiment assignment:', {
+      experiment: experiment.key,
+      variation: result.key,
+      userAttributes: growthbook.getAttributes()
+    });
+
+    // Get the analytics manager and track the experiment assignment
+    const analytics = getAnalyticsManager();
+    if (analytics) {
+      // Track the experiment assignment through our dedicated endpoint
+      analytics.trackExperimentAssignment(
+        experiment.key,
+        result.key,
+        experiment.name,
+        result.name
+      );
+
+      // Also track as a general analytics event for broader analysis
+      analytics.track({
+        event_type: 'experiment_viewed',
+        event_name: 'Experiment Viewed',
+        properties: {
+          experiment_id: experiment.key,
+          variation_id: result.key,
+          experiment_name: experiment.name || '',
+          variation_name: result.name || ''
+        }
+      });
+    } else {
+      console.warn('Analytics manager not available for experiment tracking');
+    }
   },
   plugins: [autoAttributesPlugin()],
+});
+
+// Initialize GrowthBook to establish connection with the dashboard
+growthbook.init().then((result) => {
+  console.log("GrowthBook initialized:", result);
+  
+  // TODO: REMOVE_DEBUG_LOGS - Remove after experiment debugging
+  console.log('🔍 DEBUG_EXPERIMENT: GrowthBook user attributes:', growthbook.getAttributes());
+}).catch((error) => {
+  console.error("Failed to initialize GrowthBook:", error);
 });
 
 export default growthbook;

@@ -46,7 +46,7 @@ class AnalyticsManager {
 
   constructor(config: Partial<AnalyticsConfig> = {}) {
     this.config = {
-      apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
+      apiUrl: import.meta.env.VITE_API_URL || '/api',
       sessionTimeout: 30 * 60 * 1000, // 30 minutes
       batchSize: 10,
       flushInterval: 5000, // 5 seconds
@@ -84,11 +84,15 @@ class AnalyticsManager {
   private getOrCreateAnonymousId(): string {
     const existingId = localStorage.getItem('analytics_anonymous_id');
     if (existingId) {
+      // TODO: REMOVE_DEBUG_LOGS - Remove after experiment debugging
+      console.log('🔍 DEBUG_ANON_ID: Found existing anonymous ID:', existingId);
       return existingId;
     }
 
     const newId = uuidv4();
     localStorage.setItem('analytics_anonymous_id', newId);
+    // TODO: REMOVE_DEBUG_LOGS - Remove after experiment debugging
+    console.log('🔍 DEBUG_ANON_ID: Created new anonymous ID:', newId);
     return newId;
   }
 
@@ -335,6 +339,43 @@ class AnalyticsManager {
     });
   }
 
+  trackExperimentAssignment(experimentId: string, variationId: string, experimentName?: string, variationName?: string): void {
+    console.log('🧪 Tracking experiment assignment:', {
+      experimentId,
+      variationId,
+      experimentName,
+      variationName
+    });
+
+    // Send to dedicated experiment assignment endpoint
+    if (this.isOnline) {
+      fetch(`${this.config.apiUrl}/analytics/experiment-assignment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: this.sessionId,
+          user_id: this.userId,
+          anonymous_id: this.anonymousId,
+          experiment_id: experimentId,
+          variation_id: variationId,
+          experiment_name: experimentName,
+          variation_name: variationName,
+          client_timestamp: new Date().toISOString()
+        })
+      }).then(response => {
+        if (response.ok) {
+          console.log('✅ Experiment assignment tracked successfully');
+        } else {
+          console.error('❌ Failed to track experiment assignment:', response.status);
+        }
+      }).catch(error => {
+        console.error('❌ Failed to track experiment assignment:', error);
+      });
+    }
+  }
+
   private async flushEvents(): Promise<void> {
     if (!this.isOnline) {
       console.log('📴 Offline - skipping event flush');
@@ -460,6 +501,10 @@ export const useAnalytics = () => {
     analyticsManager?.trackButtonClick(buttonName, location);
   }, []);
 
+  const trackExperimentAssignment = useCallback((experimentId: string, variationId: string, experimentName?: string, variationName?: string) => {
+    analyticsManager?.trackExperimentAssignment(experimentId, variationId, experimentName, variationName);
+  }, []);
+
   const setUserId = useCallback((userId: string | null) => {
     analyticsManager?.setUserId(userId);
   }, []);
@@ -475,6 +520,7 @@ export const useAnalytics = () => {
     trackPurchase,
     trackSearch,
     trackButtonClick,
+    trackExperimentAssignment,
     setUserId
   };
 };

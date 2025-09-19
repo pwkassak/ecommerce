@@ -141,6 +141,32 @@ PARTITION BY toYYYYMM(timestamp)
 ORDER BY (product_id, event_type, timestamp)
 SETTINGS index_granularity = 8192;
 
+-- Experiment assignments table - tracks which users see which experiment variations
+CREATE TABLE IF NOT EXISTS experiment_assignments (
+    timestamp DateTime64(3) DEFAULT now64(),
+    assignment_id String DEFAULT generateUUIDv4(),
+    session_id String,
+    user_id Nullable(String),
+    anonymous_id String,
+    experiment_id String,
+    variation_id String,
+    experiment_name Nullable(String),
+    variation_name Nullable(String),
+    
+    -- User context
+    user_agent String,
+    ip_address IPv4,
+    country LowCardinality(String) DEFAULT '',
+    
+    -- Technical metadata
+    client_timestamp DateTime64(3),
+    server_timestamp DateTime64(3) DEFAULT now64()
+    
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (experiment_id, anonymous_id, timestamp)
+SETTINGS index_granularity = 8192;
+
 -- Materialized view for real-time hourly aggregations
 CREATE MATERIALIZED VIEW IF NOT EXISTS hourly_events_mv
 TO hourly_events

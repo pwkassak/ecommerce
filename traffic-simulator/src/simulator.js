@@ -15,6 +15,7 @@ class TrafficSimulator {
     this.activeSessions = new Set();
     this.isRunning = false;
     this.sessionCounter = 0;
+    this.browsers = [];
   }
 
   async start() {
@@ -24,30 +25,10 @@ class TrafficSimulator {
     logger.info('Starting traffic simulator', this.config);
     this.isRunning = true;
 
-    // Launch initial browser sessions
-    console.log(`Launching ${this.config.concurrentBrowsers} browser sessions...`);
+    // Launch browsers once at startup
+    console.log(`Launching ${this.config.concurrentBrowsers} browsers...`);
     for (let i = 0; i < this.config.concurrentBrowsers; i++) {
-      this.launchSession();
-    }
-
-    // Handle graceful shutdown
-    process.on('SIGTERM', () => this.stop());
-    process.on('SIGINT', () => this.stop());
-
-    console.log('TrafficSimulator.start() completed');
-  }
-
-  async launchSession() {
-    if (!this.isRunning) return;
-
-    const sessionId = ++this.sessionCounter;
-    let browser = null;
-    let session = null;
-
-    logger.info(`Launching browser session ${sessionId}`);
-
-    try {
-      browser = await chromium.launch({
+      const browser = await chromium.launch({
         headless: true,
         args: [
           '--no-sandbox',
@@ -57,7 +38,28 @@ class TrafficSimulator {
           '--disable-features=VizDisplayCompositor'
         ]
       });
+      this.browsers.push(browser);
 
+      // Start session loop for this browser
+      this.launchSession(browser, i);
+    }
+
+    // Handle graceful shutdown
+    process.on('SIGTERM', () => this.stop());
+    process.on('SIGINT', () => this.stop());
+
+    console.log('TrafficSimulator.start() completed');
+  }
+
+  async launchSession(browser, browserId) {
+    if (!this.isRunning) return;
+
+    const sessionId = ++this.sessionCounter;
+    let session = null;
+
+    logger.info(`Launching session ${sessionId} on browser ${browserId}`);
+
+    try {
       session = new BrowserSession(sessionId, browser, this.config);
       this.activeSessions.add(session);
 
@@ -69,7 +71,7 @@ class TrafficSimulator {
         }
       }, (this.config.sessionDurationMax + 60) * 1000); // Max duration + 1 minute buffer
 
-      // Run the session
+      // Run the session (only creates/destroys context, not browser)
       await session.run();
 
       // Clear timeout since session completed normally
@@ -89,16 +91,9 @@ class TrafficSimulator {
         this.activeSessions.delete(session);
       }
 
-      // ALWAYS close browser, even on error
-      if (browser) {
-        await browser.close().catch(err =>
-          logger.error(`Failed to close browser for session ${sessionId}:`, err.message)
-        );
-      }
-
-      // Schedule next session after delay
+      // Browser stays open - just schedule next session
       if (this.isRunning) {
-        setTimeout(() => this.launchSession(), this.config.restartDelay);
+        setTimeout(() => this.launchSession(browser, browserId), this.config.restartDelay);
       }
     }
   }
@@ -113,6 +108,13 @@ class TrafficSimulator {
     );
 
     await Promise.all(sessionPromises);
+
+    // Close all browsers
+    const browserPromises = this.browsers.map(browser =>
+      browser.close().catch(err => logger.error('Error closing browser:', err))
+    );
+
+    await Promise.all(browserPromises);
     logger.info('Traffic simulator stopped');
     process.exit(0);
   }

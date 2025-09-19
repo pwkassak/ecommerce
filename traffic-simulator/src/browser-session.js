@@ -131,7 +131,7 @@ class BrowserSession {
       });
       throw error;
     } finally {
-      // Clean up in correct order: page -> context (browser closed by simulator)
+      // Clean up in correct order: page -> context (browser is reused by simulator)
       if (this.page) {
         await this.page.close().catch(err =>
           logger.debug(`Failed to close page for session ${this.sessionId}:`, err.message)

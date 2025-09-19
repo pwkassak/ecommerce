@@ -102,7 +102,7 @@ services:
       SESSION_DURATION_MIN: 2
       SESSION_DURATION_MAX: 5
       TARGET_URL: http://frontend:3002
-      RESTART_DELAY: 100
+      RESTART_DELAY: 10
       LOG_LEVEL: info
       NODE_ENV: development
     volumes:

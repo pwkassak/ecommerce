@@ -99,10 +99,10 @@ services:
     init: true
     environment:
       CONCURRENT_BROWSERS: 50
-      SESSION_DURATION_MIN: 10
-      SESSION_DURATION_MAX: 45
+      SESSION_DURATION_MIN: 2
+      SESSION_DURATION_MAX: 5
       TARGET_URL: http://frontend:3002
-      RESTART_DELAY: 3000
+      RESTART_DELAY: 100
       LOG_LEVEL: info
       NODE_ENV: development
     volumes:

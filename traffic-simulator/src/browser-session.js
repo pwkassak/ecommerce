@@ -110,8 +110,8 @@ class BrowserSession {
           await this.performRandomAction();
           this.actionsCompleted++;
           
-          // Random delay between actions (50-200ms)
-          const delay = Math.random() * 150 + 50;
+          // Minimal delay between actions (5-20ms)
+          const delay = Math.random() * 15 + 5;
           await this.sleep(delay);
           
         } catch (actionError) {
@@ -175,8 +175,8 @@ class BrowserSession {
   async stop() {
     this.isRunning = false;
 
-    // Add small delay to allow current action to complete
-    await this.sleep(100);
+    // Minimal delay to allow current action to complete
+    await this.sleep(10);
 
     if (this.page) {
       await this.page.close().catch(err =>

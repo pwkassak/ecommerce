@@ -4,21 +4,65 @@ const logger = require('./logger');
 
 class TrafficSimulator {
   constructor() {
+    // Define required environment variables
+    const requiredVars = [
+      'CONCURRENT_BROWSERS',
+      'TARGET_URL',
+      'RESTART_DELAY',
+      'SESSION_DURATION_MIN',
+      'SESSION_DURATION_MAX',
+      'ACTION_DELAY_MIN',
+      'ACTION_DELAY_MAX',
+      'ANALYTICS_FLUSH_WAIT',
+      'PAGE_LOAD_TIMEOUT',
+      'BETWEEN_ACTIONS_DELAY_MIN',
+      'BETWEEN_ACTIONS_DELAY_MAX'
+    ];
+
+    // Check for missing variables
+    const missing = requiredVars.filter(varName => !process.env[varName]);
+
+    if (missing.length > 0) {
+      console.error('❌ Missing required environment variables:');
+      missing.forEach(varName => {
+        console.error(`   - ${varName}`);
+      });
+      console.error('\nPlease ensure all required environment variables are set in your .env file or docker-compose.yml');
+      process.exit(1);
+    }
+
+    // Parse and validate values
     this.config = {
-      concurrentBrowsers: parseInt(process.env.CONCURRENT_BROWSERS) || 5,
-      targetUrl: process.env.TARGET_URL || 'http://frontend:3002',
-      restartDelay: parseInt(process.env.RESTART_DELAY) || 2000,
-      sessionDurationMin: parseInt(process.env.SESSION_DURATION_MIN) || 30,
-      sessionDurationMax: parseInt(process.env.SESSION_DURATION_MAX) || 120,
+      concurrentBrowsers: parseInt(process.env.CONCURRENT_BROWSERS),
+      targetUrl: process.env.TARGET_URL,
+      restartDelay: parseInt(process.env.RESTART_DELAY),
+      sessionDurationMin: parseInt(process.env.SESSION_DURATION_MIN),
+      sessionDurationMax: parseInt(process.env.SESSION_DURATION_MAX),
       delays: {
-        actionMin: parseInt(process.env.ACTION_DELAY_MIN) || 1000,
-        actionMax: parseInt(process.env.ACTION_DELAY_MAX) || 3000,
-        analyticsFlush: parseInt(process.env.ANALYTICS_FLUSH_WAIT) || 6000,
-        pageLoadTimeout: parseInt(process.env.PAGE_LOAD_TIMEOUT) || 30000,
-        betweenActionsMin: parseInt(process.env.BETWEEN_ACTIONS_DELAY_MIN) || 5,
-        betweenActionsMax: parseInt(process.env.BETWEEN_ACTIONS_DELAY_MAX) || 20
+        actionMin: parseInt(process.env.ACTION_DELAY_MIN),
+        actionMax: parseInt(process.env.ACTION_DELAY_MAX),
+        analyticsFlush: parseInt(process.env.ANALYTICS_FLUSH_WAIT),
+        pageLoadTimeout: parseInt(process.env.PAGE_LOAD_TIMEOUT),
+        betweenActionsMin: parseInt(process.env.BETWEEN_ACTIONS_DELAY_MIN),
+        betweenActionsMax: parseInt(process.env.BETWEEN_ACTIONS_DELAY_MAX)
       }
     };
+
+    // Validate parsed values
+    if (isNaN(this.config.concurrentBrowsers) || this.config.concurrentBrowsers <= 0) {
+      console.error(`❌ Invalid CONCURRENT_BROWSERS value: ${process.env.CONCURRENT_BROWSERS}`);
+      process.exit(1);
+    }
+
+    if (this.config.sessionDurationMin >= this.config.sessionDurationMax) {
+      console.error(`❌ SESSION_DURATION_MIN (${this.config.sessionDurationMin}) must be less than SESSION_DURATION_MAX (${this.config.sessionDurationMax})`);
+      process.exit(1);
+    }
+
+    if (this.config.delays.actionMin >= this.config.delays.actionMax) {
+      console.error(`❌ ACTION_DELAY_MIN (${this.config.delays.actionMin}) must be less than ACTION_DELAY_MAX (${this.config.delays.actionMax})`);
+      process.exit(1);
+    }
 
     this.activeSessions = new Set();
     this.isRunning = false;

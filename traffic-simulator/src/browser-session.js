@@ -59,7 +59,7 @@ class BrowserSession {
       });
 
       // Initialize user actions
-      this.userActions = new UserActions(this.page, this.config.targetUrl);
+      this.userActions = new UserActions(this.page, this.config.targetUrl, this.config.delays);
 
       // Add script to override analytics API URL configuration
       await this.page.addInitScript(() => {
@@ -110,8 +110,9 @@ class BrowserSession {
           await this.performRandomAction();
           this.actionsCompleted++;
           
-          // Minimal delay between actions (5-20ms)
-          const delay = Math.random() * 15 + 5;
+          // Configurable delay between actions
+          const delayRange = this.config.delays.betweenActionsMax - this.config.delays.betweenActionsMin;
+          const delay = Math.random() * delayRange + this.config.delays.betweenActionsMin;
           await this.sleep(delay);
           
         } catch (actionError) {

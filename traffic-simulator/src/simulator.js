@@ -9,7 +9,15 @@ class TrafficSimulator {
       targetUrl: process.env.TARGET_URL || 'http://frontend:3002',
       restartDelay: parseInt(process.env.RESTART_DELAY) || 2000,
       sessionDurationMin: parseInt(process.env.SESSION_DURATION_MIN) || 30,
-      sessionDurationMax: parseInt(process.env.SESSION_DURATION_MAX) || 120
+      sessionDurationMax: parseInt(process.env.SESSION_DURATION_MAX) || 120,
+      delays: {
+        actionMin: parseInt(process.env.ACTION_DELAY_MIN) || 1000,
+        actionMax: parseInt(process.env.ACTION_DELAY_MAX) || 3000,
+        analyticsFlush: parseInt(process.env.ANALYTICS_FLUSH_WAIT) || 6000,
+        pageLoadTimeout: parseInt(process.env.PAGE_LOAD_TIMEOUT) || 30000,
+        betweenActionsMin: parseInt(process.env.BETWEEN_ACTIONS_DELAY_MIN) || 5,
+        betweenActionsMax: parseInt(process.env.BETWEEN_ACTIONS_DELAY_MAX) || 20
+      }
     };
 
     this.activeSessions = new Set();

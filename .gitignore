@@ -18,8 +18,18 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Project-specific environment files
+.env.dev
+.env.prod
+backend/.env.dev
+backend/.env.prod
+traffic-simulator/.env
+
 # Keep example files
 !.env.example
+!backend/.env.example
+!traffic-simulator/.env.example
 
 # Runtime data
 pids

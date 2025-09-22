@@ -4,10 +4,9 @@ services:
     image: postgres:15-alpine
     container_name: cubes_db_dev
     restart: unless-stopped
+    env_file:
+      - .env.dev
     environment:
-      POSTGRES_DB: cubes_db
-      POSTGRES_USER: cubes_user
-      POSTGRES_PASSWORD: cubes_password
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
@@ -20,21 +19,17 @@ services:
 
   # Backend API (Development)
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile.dev
     container_name: cubes_api_dev
     restart: unless-stopped
+    env_file:
+      - .env.dev
+      - ./backend/.env.dev
     environment:
-      NODE_ENV: development
-      PORT: 5001
+      # Docker-specific override for database connection
       DATABASE_URL: postgresql://cubes_user:cubes_password@postgres:5432/cubes_db
-      FRONTEND_URL: http://localhost:3002
-      CORS_ORIGIN: http://localhost:3002
-      CLICKHOUSE_HOST: http://clickhouse:8123
-      CLICKHOUSE_USER: analytics_user
-      CLICKHOUSE_PASSWORD: analytics_password
-      CLICKHOUSE_DATABASE: analytics
     ports:
       - "5001:5001"
     volumes:
@@ -52,8 +47,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: cubes_frontend_dev
     restart: unless-stopped
-    environment:
-      NODE_ENV: development
+    env_file:
+      - .env.dev
     ports:
       - "3002:3002"  # Vite dev server with HTTPS
     volumes:
@@ -69,10 +64,11 @@ services:
     image: clickhouse/clickhouse-server:23.8-alpine
     container_name: cubes_analytics_dev
     restart: unless-stopped
+    env_file:
+      - .env.dev
     environment:
+      # ClickHouse-specific configuration
       CLICKHOUSE_DB: analytics
-      CLICKHOUSE_USER: analytics_user
-      CLICKHOUSE_PASSWORD: analytics_password
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     ports:
       - "8123:8123"  # HTTP interface
@@ -97,16 +93,15 @@ services:
     container_name: cubes_traffic_simulator_dev
     restart: unless-stopped
     init: true
+    env_file:
+      - .env.dev
+      - ./traffic-simulator/.env
     environment:
-      CONCURRENT_BROWSERS: 50
-      SESSION_DURATION_MIN: 1
-      SESSION_DURATION_MAX: 3
+      # Docker-specific override for network connectivity
       TARGET_URL: http://frontend:3002
-      RESTART_DELAY: 5
-      LOG_LEVEL: info
-      NODE_ENV: development
     volumes:
       - ./traffic-simulator/logs:/app/logs
+      - ./traffic-simulator/src:/app/src:ro
     networks:
       - cubes_network_dev
     extra_hosts:
@@ -117,8 +112,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6G
-          cpus: '4.0'
+          memory: 24G
+          cpus: '10.0'
         reservations:
           memory: 3G
           cpus: '2.0'

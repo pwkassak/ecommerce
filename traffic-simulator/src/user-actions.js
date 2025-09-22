@@ -1,10 +1,18 @@
 const logger = require('./logger');
 
 class UserActions {
-  constructor(page, baseUrl) {
+  constructor(page, baseUrl, delays = {}) {
     this.page = page;
     this.baseUrl = baseUrl;
     this.currentCart = [];
+    this.delays = {
+      actionMin: delays.actionMin || 1000,
+      actionMax: delays.actionMax || 3000,
+      analyticsFlush: delays.analyticsFlush || 6000,
+      pageLoadTimeout: delays.pageLoadTimeout || 30000,
+      betweenActionsMin: delays.betweenActionsMin || 5,
+      betweenActionsMax: delays.betweenActionsMax || 20
+    };
   }
 
   async navigateToHomePage() {
@@ -12,7 +20,7 @@ class UserActions {
     try {
       await this.page.goto(this.baseUrl, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000
+        timeout: this.delays.pageLoadTimeout
       });
 
       // Wait for the page to load completely and products to render
@@ -81,8 +89,8 @@ class UserActions {
     const randomIndex = Math.floor(Math.random() * Math.min(productCards.length, 5));
     await productCards[randomIndex].scrollIntoViewIfNeeded();
     
-    // Small delay to simulate reading
-    await this.sleep(1000 + Math.random() * 2000);
+    // Configurable delay to simulate reading
+    await this.randomDelay();
   }
 
   async viewProductDetail() {
@@ -103,7 +111,7 @@ class UserActions {
     await this.page.waitForSelector('.product-detail', { timeout: 5000 });
     
     // Simulate reading product details
-    await this.sleep(2000 + Math.random() * 3000);
+    await this.randomDelay();
   }
 
   async addToCart() {
@@ -156,7 +164,7 @@ class UserActions {
     }
     
     // Simulate looking at cart contents
-    await this.sleep(1000 + Math.random() * 2000);
+    await this.randomDelay();
   }
 
   async updateCartQuantity() {
@@ -210,7 +218,7 @@ class UserActions {
     await this.page.waitForLoadState('networkidle');
     
     // Simulate browsing category
-    await this.sleep(1000 + Math.random() * 2000);
+    await this.randomDelay();
   }
 
   async proceedToCheckout() {
@@ -301,7 +309,7 @@ class UserActions {
     }
     
     // Small delay after filling form
-    await this.sleep(500);
+    await this.randomDelay(200, 800);
   }
 
   async sleep(ms) {
@@ -309,8 +317,10 @@ class UserActions {
   }
 
   // Utility method to simulate human-like random delays
-  async randomDelay(min = 500, max = 2000) {
-    const delay = Math.random() * (max - min) + min;
+  async randomDelay(min = null, max = null) {
+    const minDelay = min !== null ? min : this.delays.actionMin;
+    const maxDelay = max !== null ? max : this.delays.actionMax;
+    const delay = Math.random() * (maxDelay - minDelay) + minDelay;
     await this.sleep(delay);
   }
 
@@ -330,10 +340,10 @@ class UserActions {
     }
   }
 
-  // Wait for analytics events to be flushed (5 second interval)
+  // Wait for analytics events to be flushed (configurable interval)
   async waitForAnalyticsFlush() {
-    // Wait a bit longer than the flush interval to ensure events are sent
-    await this.sleep(6000);
+    // Wait for configured time to ensure events are sent
+    await this.sleep(this.delays.analyticsFlush);
     logger.debug('Analytics flush wait completed');
   }
 }

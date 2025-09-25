@@ -1,9 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { GrowthBookProvider } from '@growthbook/growthbook-react';
+import { OpenFeatureProvider } from './contexts/OpenFeatureContext';
 import { CartProvider } from './contexts/CartContext';
 import { usePageTracking } from './hooks/usePageTracking';
 import growthbook from './services/growthbook';
+import './services/openfeature'; // Initialize OpenFeature service
 import Navigation from './components/Navigation';
 import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
@@ -40,13 +42,15 @@ function AppContent() {
 
 function App() {
   return (
-    <GrowthBookProvider growthbook={growthbook}>
-      <CartProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </CartProvider>
-    </GrowthBookProvider>
+    <OpenFeatureProvider>
+      <GrowthBookProvider growthbook={growthbook}>
+        <CartProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </CartProvider>
+      </GrowthBookProvider>
+    </OpenFeatureProvider>
   );
 }
 

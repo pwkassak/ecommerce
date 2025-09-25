@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useFeatureIsOn } from '@growthbook/growthbook-react';
+import { useFeatureIsOn } from '../hooks/useOpenFeatureFlags';
 import { Product } from '../types';
 import ProductCard from '../components/ProductCard';
 
@@ -8,14 +8,14 @@ const HomePage: React.FC = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // GrowthBook feature flag to conditionally hide categories section
+  // OpenFeature flag to conditionally hide categories section
   const removeQuickLinks = useFeatureIsOn('remove-quick-links');
 
   // TODO: REMOVE_DEBUG_LOGS - Remove after experiment debugging
   useEffect(() => {
     const anonymousId = localStorage.getItem('analytics_anonymous_id');
     console.log('🔍 DEBUG_ANON_ID: HomePage anonymous ID:', anonymousId);
-    console.log('🔍 DEBUG_EXPERIMENT: Feature flag remove-quick-links:', removeQuickLinks);
+    console.log('🔍 DEBUG_EXPERIMENT: OpenFeature flag remove-quick-links:', removeQuickLinks);
     console.log('🔍 DEBUG_EXPERIMENT: Categories section will be:', removeQuickLinks ? 'HIDDEN' : 'VISIBLE');
   }, [removeQuickLinks]);
 

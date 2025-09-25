@@ -1,16 +1,16 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAnalytics } from './useAnalytics';
-import { setAnalyticsManager } from '../services/growthbook';
+import { setOpenFeatureAnalyticsManager } from '../services/openfeature';
 
 export const usePageTracking = () => {
   const location = useLocation();
   const analytics = useAnalytics();
   const { trackPageView } = analytics;
 
-  // Set up analytics manager for GrowthBook integration
+  // Set up analytics manager for OpenFeature integration
   useEffect(() => {
-    setAnalyticsManager(analytics);
+    setOpenFeatureAnalyticsManager(analytics);
   }, [analytics]);
 
   useEffect(() => {

@@ -1,19 +1,6 @@
 import { GrowthBook } from "@growthbook/growthbook";
 import { v4 as uuidv4 } from 'uuid';
 
-// Get access to the analytics manager instance
-let analyticsManagerInstance: any = null;
-
-// Function to get the analytics manager instance
-const getAnalyticsManager = () => {
-  return analyticsManagerInstance;
-};
-
-// Function to set the analytics manager (called from the component that uses analytics)
-export const setAnalyticsManager = (manager: any) => {
-  analyticsManagerInstance = manager;
-};
-
 // Function to detect the correct GrowthBook API host based on environment
 const getGrowthBookApiHost = (): string => {
   // Check if we're being accessed from inside Docker (traffic simulator)
@@ -51,8 +38,8 @@ const growthbook = new GrowthBook({
     id: anonymousId  // Also set 'id' for compatibility with any experiments that might use it
   },
   trackingCallback: async (experiment, result) => {
-    // Integrate with existing ClickHouse analytics
-    console.log("🧪 GrowthBook Experiment Viewed", {
+    // Basic logging for debugging - analytics tracking now handled by OpenFeature
+    console.log("🧪 GrowthBook (legacy) Experiment Viewed", {
       experimentId: experiment.key,
       variationId: result.key,
       experimentName: experiment.name,
@@ -60,37 +47,12 @@ const growthbook = new GrowthBook({
     });
 
     // TODO: REMOVE_DEBUG_LOGS - Remove after experiment debugging
-    console.log('🔍 DEBUG_EXPERIMENT: Experiment assignment:', {
+    console.log('🔍 DEBUG_EXPERIMENT: GrowthBook direct experiment assignment:', {
       experiment: experiment.key,
       variation: result.key,
-      userAttributes: growthbook.getAttributes()
+      userAttributes: growthbook.getAttributes(),
+      note: 'Analytics now handled by OpenFeature'
     });
-
-    // Get the analytics manager and track the experiment assignment
-    const analytics = getAnalyticsManager();
-    if (analytics) {
-      // Track the experiment assignment through our dedicated endpoint
-      analytics.trackExperimentAssignment(
-        experiment.key,
-        result.key,
-        experiment.name,
-        result.name
-      );
-
-      // Also track as a general analytics event for broader analysis
-      analytics.track({
-        event_type: 'experiment_viewed',
-        event_name: 'Experiment Viewed',
-        properties: {
-          experiment_id: experiment.key,
-          variation_id: result.key,
-          experiment_name: experiment.name || '',
-          variation_name: result.name || ''
-        }
-      });
-    } else {
-      console.warn('Analytics manager not available for experiment tracking');
-    }
   },
 });
 

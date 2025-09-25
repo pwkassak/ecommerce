@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useFeatureIsOn } from '@growthbook/growthbook-react';
+import { useFeatureIsOn } from '../hooks/useOpenFeatureFlags';
 import { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
 import { useAnalytics } from '../hooks/useAnalytics';
@@ -13,7 +13,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useCart();
   const { trackAddToCart, trackButtonClick, trackProductView } = useAnalytics();
 
-  // GrowthBook feature flag to conditionally disable add to cart button
+  // OpenFeature flag to conditionally disable add to cart button
   const removeSomeCarts = useFeatureIsOn('remove-some-carts');
 
   // When feature flag is true, randomly disable 50% of add to cart buttons

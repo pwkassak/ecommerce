@@ -10,6 +10,7 @@ interface ExperimentData {
 interface UseExperimentExposureOptions {
   threshold?: number;
   rootMargin?: string;
+  trackImmediately?: boolean;
 }
 
 export const useExperimentExposure = (
@@ -18,7 +19,18 @@ export const useExperimentExposure = (
   options?: UseExperimentExposureOptions
 ) => {
   useEffect(() => {
-    if (!experimentData || !elementRef.current) {
+    if (!experimentData) {
+      return;
+    }
+
+    // If trackImmediately is true, track without IntersectionObserver
+    if (options?.trackImmediately) {
+      experimentTracker.trackExposure(experimentData);
+      return;
+    }
+
+    // Otherwise, use IntersectionObserver for visibility-based tracking
+    if (!elementRef.current) {
       return;
     }
 
@@ -38,5 +50,5 @@ export const useExperimentExposure = (
     observer.observe(elementRef.current);
 
     return () => observer.disconnect();
-  }, [experimentData, elementRef, options?.threshold, options?.rootMargin]);
+  }, [experimentData, elementRef, options?.threshold, options?.rootMargin, options?.trackImmediately]);
 };

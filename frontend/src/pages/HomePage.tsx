@@ -9,10 +9,12 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const categoriesRef = useRef<HTMLElement | null>(null);
 
-  // Track exposure when categories section becomes visible
+  // Track exposure immediately when data loads (not when visible)
+  // This ensures both variations are tracked, even if categories aren't shown
   useExperimentExposure(
     categoriesRef,
-    data?.experiments?.['remove-quick-links']
+    data?.experiments?.['remove-quick-links'],
+    { trackImmediately: true }
   );
 
   useEffect(() => {

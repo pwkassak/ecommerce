@@ -51,10 +51,14 @@ router.get('/', async (req: Request, res: Response) => {
         source: result.source,
         hasExperiment: !!result.experiment,
         experimentKey: result.experiment?.key,
+        experimentName: result.experiment?.name,
         hasExperimentResult: !!result.experimentResult,
         variationId: result.experimentResult?.variationId,
-        inExperiment: result.experimentResult?.inExperiment
+        inExperiment: result.experimentResult?.inExperiment,
+        ruleId: result.ruleId
       });
+      console.log('🔍 Full experiment object:', JSON.stringify(result.experiment, null, 2));
+      console.log('🔍 Full experimentResult object:', JSON.stringify(result.experimentResult, null, 2));
 
       // Build experiment metadata for frontend tracking
       // Only include if user is actually in an experiment with valid experiment key

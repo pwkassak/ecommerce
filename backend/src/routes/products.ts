@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ProductModel } from '../models/products.js';
 import { ApiResponse, PaginatedResponse } from '../types/index.js';
-import { featureFlagService } from '../services/featureFlags.js';
 
 const router = Router();
 
@@ -41,13 +40,24 @@ router.get('/', async (req: Request, res: Response) => {
     let experiments: any = {};
     let categories: any[] = [];
 
-    if (featured === 'true' && req.anonymousId) {
-      // Evaluate feature flags
-      experiments = featureFlagService.evaluateFeatures(req.anonymousId);
+    if (featured === 'true' && req.growthbook) {
+      // Evaluate feature flag using request-scoped GrowthBook instance
+      const result = req.growthbook.evalFeature('remove-quick-links');
+      const shouldHideCategories = result.value;
+
+      // Build experiment metadata for frontend tracking
+      // Only include if user is actually in an experiment with valid experiment key
+      if (result.experimentResult && result.experiment && result.experiment.key) {
+        experiments = {
+          'remove-quick-links': {
+            experiment_id: result.experiment.key,
+            variation_id: String(result.experimentResult.variationId ?? result.experimentResult.key ?? ''),
+            value: shouldHideCategories
+          }
+        };
+      }
 
       // Get categories data based on feature flag
-      const shouldHideCategories = experiments['remove-quick-links']?.value;
-
       if (!shouldHideCategories) {
         categories = [
           { id: 'speed-cubes', name: 'Speed Cubes', description: 'Professional racing cubes' },

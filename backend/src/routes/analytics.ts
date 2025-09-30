@@ -77,7 +77,7 @@ router.post('/events', async (req: Request, res: Response) => {
 
     const event: AnalyticsEvent = {
       event_id: uuidv4(),
-      timestamp: req.analytics.timestamp,
+      timestamp: req.analytics!.timestamp,
       session_id,
       user_id,
       anonymous_id,
@@ -87,10 +87,10 @@ router.post('/events', async (req: Request, res: Response) => {
       page_title,
       referrer,
       properties: JSON.stringify(properties),
-      user_agent: req.analytics.user_agent,
-      ip_address: req.analytics.ip_address,
-      client_timestamp: client_timestamp || req.analytics.timestamp,
-      server_timestamp: req.analytics.server_timestamp,
+      user_agent: req.analytics!.user_agent,
+      ip_address: req.analytics!.ip_address,
+      client_timestamp: client_timestamp || req.analytics!.timestamp,
+      server_timestamp: req.analytics!.server_timestamp,
       
       // E-commerce fields
       product_id,
@@ -136,10 +136,10 @@ router.post('/events/batch', async (req: Request, res: Response) => {
 
     const processedEvents: AnalyticsEvent[] = events.map(eventData => ({
       event_id: uuidv4(),
-      timestamp: req.analytics.timestamp,
-      user_agent: req.analytics.user_agent,
-      ip_address: req.analytics.ip_address,
-      server_timestamp: req.analytics.server_timestamp,
+      timestamp: req.analytics!.timestamp,
+      user_agent: req.analytics!.user_agent,
+      ip_address: req.analytics!.ip_address,
+      server_timestamp: req.analytics!.server_timestamp,
       properties: JSON.stringify(eventData.properties || {}),
       currency: eventData.currency || 'USD',
       ...eventData
@@ -193,7 +193,7 @@ router.post('/page-view', async (req: Request, res: Response) => {
     }
 
     const pageView: PageViewEvent = {
-      timestamp: req.analytics.timestamp,
+      timestamp: req.analytics!.timestamp,
       session_id,
       user_id,
       page_url,
@@ -203,7 +203,7 @@ router.post('/page-view', async (req: Request, res: Response) => {
       time_on_page_seconds,
       scroll_depth_percent,
       clicks_count,
-      user_agent: req.analytics.user_agent,
+      user_agent: req.analytics!.user_agent,
       viewport_width,
       viewport_height
     };
@@ -252,7 +252,7 @@ router.post('/experiment-assignment', async (req: Request, res: Response) => {
 
     const assignment: ExperimentAssignment = {
       assignment_id: uuidv4(),
-      timestamp: req.analytics.timestamp,
+      timestamp: req.analytics!.timestamp,
       session_id,
       user_id,
       anonymous_id,
@@ -260,10 +260,10 @@ router.post('/experiment-assignment', async (req: Request, res: Response) => {
       variation_id,
       experiment_name,
       variation_name,
-      user_agent: req.analytics.user_agent,
-      ip_address: req.analytics.ip_address,
-      client_timestamp: client_timestamp || req.analytics.timestamp,
-      server_timestamp: req.analytics.server_timestamp
+      user_agent: req.analytics!.user_agent,
+      ip_address: req.analytics!.ip_address,
+      client_timestamp: client_timestamp || req.analytics!.timestamp,
+      server_timestamp: req.analytics!.server_timestamp
     };
 
     await clickHouseService.trackExperimentAssignment(assignment);

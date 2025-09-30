@@ -1,44 +1,42 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useFeatureIsOn } from '../hooks/useOpenFeatureFlags';
+import { useExperimentExposure } from '../hooks/useExperimentExposure';
 import { Product } from '../types';
 import ProductCard from '../components/ProductCard';
 
 const HomePage: React.FC = () => {
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
-  // OpenFeature flag to conditionally hide categories section
-  const removeQuickLinks = useFeatureIsOn('remove-quick-links');
+  const categoriesRef = useRef<HTMLElement | null>(null);
 
-  // TODO: REMOVE_DEBUG_LOGS - Remove after experiment debugging
-  useEffect(() => {
-    const anonymousId = localStorage.getItem('analytics_anonymous_id');
-    console.log('🔍 DEBUG_ANON_ID: HomePage anonymous ID:', anonymousId);
-    console.log('🔍 DEBUG_EXPERIMENT: OpenFeature flag remove-quick-links:', removeQuickLinks);
-    console.log('🔍 DEBUG_EXPERIMENT: Categories section will be:', removeQuickLinks ? 'HIDDEN' : 'VISIBLE');
-  }, [removeQuickLinks]);
+  // Track exposure when categories section becomes visible
+  useExperimentExposure(
+    categoriesRef,
+    data?.experiments?.['remove-quick-links']
+  );
 
   useEffect(() => {
-    const fetchFeaturedProducts = async () => {
+    const fetchData = async () => {
       try {
-        // Fetch featured products from backend API
-        const response = await fetch('/api/products?featured=true');
+        const anonymousId = localStorage.getItem('analytics_anonymous_id');
+        const response = await fetch('/api/products?featured=true', {
+          headers: {
+            'X-Anonymous-ID': anonymousId || ''
+          }
+        });
+
         if (response.ok) {
-          const productsData = await response.json();
-          setFeaturedProducts(productsData.success ? productsData.data : []);
-        } else {
-          setFeaturedProducts([]);
+          const result = await response.json();
+          setData(result);
         }
       } catch (error) {
-        console.error('Failed to fetch featured products:', error);
-        setFeaturedProducts([]);
+        console.error('Failed to fetch homepage data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFeaturedProducts();
+    fetchData();
   }, []);
 
   return (
@@ -52,7 +50,7 @@ const HomePage: React.FC = () => {
             {loading ? (
               <div className="loading">Loading featured products...</div>
             ) : (
-              featuredProducts.map(product => (
+              data?.data?.products?.map((product: Product) => (
                 <ProductCard key={product.id} product={product} />
               ))
             )}
@@ -60,32 +58,23 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Categories Section - Conditionally rendered based on feature flag */}
-      {!removeQuickLinks && (
-        <section className="categories-preview">
+      {/* Categories Section - Rendered based on backend data */}
+      {data?.data?.categories && data.data.categories.length > 0 && (
+        <section className="categories-preview" ref={categoriesRef}>
           <div className="container">
             <h2>Shop by Category</h2>
             <div className="categories-grid">
-              <Link to="/categories/speed-cubes" className="category-card">
-                <img src="/images/category-speed.jpg" alt="Speed Cubes" />
-                <h3>Speed Cubes</h3>
-                <p>Professional racing cubes</p>
-              </Link>
-              <Link to="/categories/puzzle-cubes" className="category-card">
-                <img src="/images/category-puzzle.jpg" alt="Puzzle Cubes" />
-                <h3>Puzzle Cubes</h3>
-                <p>Classic and specialty puzzles</p>
-              </Link>
-              <Link to="/categories/megaminx" className="category-card">
-                <img src="/images/category-megaminx.jpg" alt="Megaminx" />
-                <h3>Megaminx</h3>
-                <p>12-sided challenge cubes</p>
-              </Link>
-              <Link to="/categories/pyraminx" className="category-card">
-                <img src="/images/category-pyraminx.jpg" alt="Pyraminx" />
-                <h3>Pyraminx</h3>
-                <p>Triangular puzzle cubes</p>
-              </Link>
+              {data.data.categories.map((category: any) => (
+                <Link
+                  key={category.id}
+                  to={`/categories/${category.id}`}
+                  className="category-card"
+                >
+                  <img src={`/images/category-${category.id}.jpg`} alt={category.name} />
+                  <h3>{category.name}</h3>
+                  <p>{category.description}</p>
+                </Link>
+              ))}
             </div>
           </div>
         </section>

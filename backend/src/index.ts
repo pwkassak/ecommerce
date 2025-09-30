@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import analyticsRoutes from './routes/analytics.js';
+import { featureFlagService } from './services/featureFlags.js';
+import { userContextMiddleware } from './middleware/userContext.js';
 
 dotenv.config();
 
@@ -21,6 +23,7 @@ app.use(cors({
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(userContextMiddleware);
 
 // Routes
 app.use('/api/products', productRoutes);
@@ -53,7 +56,14 @@ app.use((req: express.Request, res: express.Response) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 CubeCraft API server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+
+  // Initialize feature flag service
+  try {
+    await featureFlagService.initialize();
+  } catch (error) {
+    console.error('Failed to initialize feature flag service:', error);
+  }
 });

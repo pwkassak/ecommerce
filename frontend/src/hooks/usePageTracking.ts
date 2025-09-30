@@ -1,17 +1,13 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAnalytics } from './useAnalytics';
-import { setOpenFeatureAnalyticsManager } from '../services/openfeature';
 
 export const usePageTracking = () => {
   const location = useLocation();
   const analytics = useAnalytics();
   const { trackPageView } = analytics;
 
-  // Set up analytics manager for OpenFeature integration
-  useEffect(() => {
-    setOpenFeatureAnalyticsManager(analytics);
-  }, [analytics]);
+  // Note: OpenFeature integration removed - now using server-side feature flags
 
   useEffect(() => {
     // Track page view when route changes

@@ -13,10 +13,6 @@
     "test:debug": "playwright test --debug"
   },
   "dependencies": {
-    "@growthbook/growthbook-react": "^1.6.1",
-    "@openfeature/growthbook-client-provider": "^0.1.2",
-    "@openfeature/react-sdk": "^1.0.1",
-    "@openfeature/web-sdk": "^1.6.1",
     "@types/react-router-dom": "^5.3.3",
     "axios": "^1.11.0",
     "react": "^19.1.1",

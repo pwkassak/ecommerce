@@ -40,8 +40,7 @@ class AnalyticsManager {
   private userId: string | null = null;
   private eventQueue: AnalyticsEventData[] = [];
   private isOnline = true;
-  private lastActivity = Date.now();
-  private flushTimer: NodeJS.Timeout | null = null;
+  private flushTimer: number | null = null;
   private pageStartTime = Date.now();
 
   constructor(config: Partial<AnalyticsConfig> = {}) {
@@ -142,7 +141,7 @@ class AnalyticsManager {
       this.trackPageView({
         page_url: window.location.pathname + window.location.search,
         page_title: document.title,
-        referrer: document.referrer || null,
+        referrer: document.referrer || undefined,
         load_time_ms: Math.round(loadTime),
         viewport_width: window.innerWidth,
         viewport_height: window.innerHeight
@@ -182,7 +181,7 @@ class AnalyticsManager {
       client_timestamp: new Date().toISOString(),
       page_url: eventData.page_url || window.location.pathname + window.location.search,
       page_title: eventData.page_title || document.title,
-      referrer: eventData.referrer || document.referrer || null,
+      referrer: eventData.referrer || document.referrer || undefined,
       ...eventData
     };
 

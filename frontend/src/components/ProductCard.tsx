@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useFeatureIsOn } from '../hooks/useOpenFeatureFlags';
 import { Product } from '../types';
 import { useCart } from '../contexts/CartContext';
 import { useAnalytics } from '../hooks/useAnalytics';
@@ -13,11 +12,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useCart();
   const { trackAddToCart, trackButtonClick, trackProductView } = useAnalytics();
 
-  // OpenFeature flag to conditionally disable add to cart button
-  const removeSomeCarts = useFeatureIsOn('remove-some-carts');
-
-  // When feature flag is true, randomly disable 50% of add to cart buttons
-  const shouldDisableCart = removeSomeCarts && Math.random() < 0.5;
+  // Note: Feature flag logic moved to server-side
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -62,10 +57,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div className="product-actions">
         <button
           onClick={handleAddToCart}
-          disabled={!product.inStock || shouldDisableCart}
+          disabled={!product.inStock}
           className="btn btn-primary add-to-cart"
         >
-          {!product.inStock ? 'Out of Stock' : shouldDisableCart ? 'Unavailable' : 'Add to Cart'}
+          {!product.inStock ? 'Out of Stock' : 'Add to Cart'}
         </button>
       </div>
     </div>

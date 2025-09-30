@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { ProductModel } from '../models/products.js';
 import { ApiResponse, PaginatedResponse } from '../types/index.js';
+import { featureFlagService } from '../services/featureFlags.js';
 
 const router = Router();
 
@@ -35,13 +36,43 @@ router.get('/', async (req: Request, res: Response) => {
     };
 
     const result = await ProductModel.getAll(filters);
-    
-    const response: PaginatedResponse<any> = {
+
+    // For featured products requests (homepage), include experiments and categories
+    let experiments: any = {};
+    let categories: any[] = [];
+
+    if (featured === 'true' && req.anonymousId) {
+      // Evaluate feature flags
+      experiments = featureFlagService.evaluateFeatures(req.anonymousId);
+
+      // Get categories data based on feature flag
+      const shouldHideCategories = experiments['remove-quick-links']?.value;
+
+      if (!shouldHideCategories) {
+        categories = [
+          { id: 'speed-cubes', name: 'Speed Cubes', description: 'Professional racing cubes' },
+          { id: 'puzzle-cubes', name: 'Puzzle Cubes', description: 'Classic and specialty puzzles' },
+          { id: 'megaminx', name: 'Megaminx', description: '12-sided challenge cubes' },
+          { id: 'pyraminx', name: 'Pyraminx', description: 'Triangular puzzle cubes' }
+        ];
+      }
+    }
+
+    const response = featured === 'true' ? {
+      data: {
+        products: result.products,
+        categories: categories
+      },
+      success: true,
+      message: `Retrieved ${result.products.length} products`,
+      pagination: result.pagination,
+      experiments: experiments
+    } as any : {
       data: result.products,
       success: true,
       message: `Retrieved ${result.products.length} products`,
       pagination: result.pagination
-    };
+    } as PaginatedResponse<any>;
 
     res.json(response);
   } catch (error) {

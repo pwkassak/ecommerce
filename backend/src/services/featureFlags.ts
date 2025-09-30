@@ -4,13 +4,18 @@ class FeatureFlagService {
   private gbClient!: GrowthBookClient;
 
   async initialize() {
+    // Use host.docker.internal to access GrowthBook running on host machine from Docker container
+    const apiHost = process.env.GROWTHBOOK_API_HOST || "http://host.docker.internal:3100";
+
     this.gbClient = new GrowthBookClient({
-      apiHost: "http://localhost:3100",
+      apiHost,
       clientKey: "sdk-0YSHIPiuOSzNPq",
       enableDevMode: true
     });
+
+    console.log(`🚩 Initializing GrowthBook with API host: ${apiHost}`);
     await this.gbClient.init({ timeout: 3000 });
-    console.log('🚩 Feature flag service initialized with GrowthBookClient');
+    console.log('✅ Feature flag service initialized with GrowthBookClient');
   }
 
   createScopedInstance(attributes: Record<string, any>): GrowthBook {

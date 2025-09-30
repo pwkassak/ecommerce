@@ -45,6 +45,17 @@ router.get('/', async (req: Request, res: Response) => {
       const result = req.growthbook.evalFeature('remove-quick-links');
       const shouldHideCategories = result.value;
 
+      // DEBUG: Log what GrowthBook is returning
+      console.log('🔍 GrowthBook evalFeature result:', {
+        value: result.value,
+        source: result.source,
+        hasExperiment: !!result.experiment,
+        experimentKey: result.experiment?.key,
+        hasExperimentResult: !!result.experimentResult,
+        variationId: result.experimentResult?.variationId,
+        inExperiment: result.experimentResult?.inExperiment
+      });
+
       // Build experiment metadata for frontend tracking
       // Only include if user is actually in an experiment with valid experiment key
       if (result.experimentResult && result.experiment && result.experiment.key) {

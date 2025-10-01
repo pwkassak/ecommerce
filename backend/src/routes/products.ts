@@ -74,8 +74,8 @@ router.get('/', async (req: Request, res: Response) => {
       // Get categories data based on feature flag
       if (!shouldHideCategories) {
         categories = [
-          { id: 'speed-cubes', name: 'Speed Cubes', description: 'Professional racing cubes' },
-          { id: 'puzzle-cubes', name: 'Puzzle Cubes', description: 'Classic and specialty puzzles' },
+          { id: 'speed', name: 'Speed Cubes', description: 'Professional racing cubes' },
+          { id: 'puzzle', name: 'Puzzle Cubes', description: 'Classic and specialty puzzles' },
           { id: 'megaminx', name: 'Megaminx', description: '12-sided challenge cubes' },
           { id: 'pyraminx', name: 'Pyraminx', description: 'Triangular puzzle cubes' }
         ];

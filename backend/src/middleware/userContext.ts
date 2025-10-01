@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { OpenFeature, Client } from '@openfeature/server-sdk';
+import { EvaluationContext } from '@openfeature/server-sdk';
 
-// Extend the Request interface to include anonymousId and openFeatureClient
+// Extend the Request interface to include anonymousId and evaluationContext
 declare module 'express-serve-static-core' {
   interface Request {
     anonymousId?: string;
-    openFeatureClient?: Client;
+    evaluationContext?: EvaluationContext;
   }
 }
 
@@ -19,24 +19,15 @@ export const userContextMiddleware = (
                      req.cookies?.anonymous_id ||
                      null;
 
-  // Create an OpenFeature client with evaluation context if we have an anonymousId
+  // Build evaluation context for this specific request
+  // This context will be passed per flag evaluation to avoid race conditions
+  // OpenFeature client (singleton) will be accessed directly via OpenFeature.getClient() in route handlers
   if (req.anonymousId) {
-    try {
-      const client = OpenFeature.getClient();
-
-      // Set evaluation context for this request
-      // Note: Context is set synchronously on the client, not as a promise
-      client.setContext({
-        targetingKey: req.anonymousId,
-        anonymous_id: req.anonymousId,
-        id: req.anonymousId
-      });
-
-      req.openFeatureClient = client;
-    } catch (error) {
-      console.error('Failed to create OpenFeature client:', error);
-      // Continue without feature flags rather than blocking the request
-    }
+    req.evaluationContext = {
+      targetingKey: req.anonymousId,
+      anonymous_id: req.anonymousId,
+      id: req.anonymousId
+    };
   }
 
   next();

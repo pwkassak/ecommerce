@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { OpenFeature } from '@openfeature/server-sdk';
 import { ProductModel } from '../models/products.js';
 import { ApiResponse, PaginatedResponse } from '../types/index.js';
 
@@ -40,9 +41,14 @@ router.get('/', async (req: Request, res: Response) => {
     let experiments: any = {};
     let categories: any[] = [];
 
-    if (featured === 'true' && req.openFeatureClient) {
-      // Evaluate feature flag using OpenFeature API
-      const details = await req.openFeatureClient.getBooleanDetails('remove-quick-links', false);
+    if (featured === 'true' && req.evaluationContext) {
+      // Evaluate feature flag using OpenFeature API with per-request context
+      const client = OpenFeature.getClient();
+      const details = await client.getBooleanDetails(
+        'remove-quick-links',
+        false,
+        req.evaluationContext
+      );
       const shouldHideCategories = details.value;
 
       // DEBUG: Log what OpenFeature is returning

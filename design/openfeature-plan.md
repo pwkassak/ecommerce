@@ -302,31 +302,50 @@ This section explains how the OpenFeature implementation works now that it's com
 
 ### 4. User Context Middleware (`backend/src/middleware/userContext.ts`)
 
-**Lines 2**: Imports
-- Imports `OpenFeature` and `Client` from OpenFeature SDK
-- **Why**: Middleware creates OpenFeature clients for each request
+**Line 2**: Imports
+- Imports `EvaluationContext` from OpenFeature SDK
+- **Why**: Middleware needs type definition for evaluation context
 
-**Lines 5-9**: TypeScript interface extension
-- Extends Express `Request` to include `openFeatureClient` property
-- **Why**: Attaches OpenFeature client to request object for use in route handlers
+**Lines 5-10**: TypeScript interface extension
+- Extends Express `Request` to include `anonymousId` and `evaluationContext` properties
+- **Why**: Attaches per-request user identification and evaluation context to request object
 
-**Lines 23-40**: Middleware logic
-- Extracts `anonymous_id` from request headers
-- Calls `OpenFeature.getClient()` to get OpenFeature client instance
-- Calls `client.setContext()` with user attributes (`targetingKey`, `anonymous_id`, `id`)
-- Attaches client to `req.openFeatureClient`
-- **Why**: Each request needs its own evaluation context based on the user making the request; context is set per-request to enable user-specific targeting
+**Lines 17-20**: Extract anonymous ID
+- Extracts `anonymous_id` from request headers or cookies
+- **Why**: User identifier needed for feature flag targeting
+
+**Lines 25-31**: Build evaluation context
+- Creates `EvaluationContext` object with user attributes (`targetingKey`, `anonymous_id`, `id`)
+- Stores on `req.evaluationContext`
+- **Why**: Each request needs its own evaluation context that will be passed per flag evaluation to prevent race conditions between concurrent requests
+- **Note**: OpenFeature client (singleton) is accessed directly via `OpenFeature.getClient()` in route handlers, not attached to request
 
 ### 5. Route Handler (`backend/src/routes/products.ts`)
 
-**Lines 43-77**: Feature flag evaluation
-- Checks if `req.openFeatureClient` exists (user has anonymous ID)
-- Calls `await req.openFeatureClient.getBooleanDetails('remove-quick-links', false)`
+**Line 2**: Imports
+- Imports `OpenFeature` from OpenFeature SDK
+- **Why**: Route handler needs access to OpenFeature singleton client
+
+**Line 44**: Conditional check
+- Checks if `req.evaluationContext` exists
+- **Why**: Evaluation context is required for feature flag evaluation
+
+**Lines 46-52**: Feature flag evaluation
+- Calls `OpenFeature.getClient()` to get singleton client
+- Calls `await client.getBooleanDetails('remove-quick-links', false, req.evaluationContext)`
+- Passes `req.evaluationContext` as third parameter
 - Extracts `details.value` for boolean flag result
-- Extracts `details.flagMetadata.experimentId` and `details.flagMetadata.variationId`
+- **Why**: Evaluation context must be passed per flag evaluation to ensure user-specific targeting without race conditions; async evaluation allows provider to perform I/O if needed
+
+**Lines 58-66**: Extract experiment metadata
+- Checks if `details.flagMetadata?.experimentId` exists
+- Extracts `experimentId` and `variationId` from flag metadata
 - Builds `experiments` object for API response to frontend
+- **Why**: Metadata contains experiment info needed for frontend exposure tracking
+
+**Lines 69-76**: Apply flag value
 - Uses flag value to conditionally include categories in response
-- **Why**: `getBooleanDetails()` returns both the flag value and metadata; metadata contains experiment info needed for frontend exposure tracking; async evaluation allows provider to perform I/O if needed
+- **Why**: Feature flag controls whether categories are shown to user
 
 **Lines 79-95**: API response construction
 - Includes `experiments` object in response when `featured === 'true'`
@@ -335,21 +354,23 @@ This section explains how the OpenFeature implementation works now that it's com
 ### 6. Data Flow Summary
 
 **Request Flow**:
-1. Request arrives → `userContextMiddleware` (line 26 in index.ts)
-2. Middleware extracts `anonymous_id` from headers
-3. Middleware gets OpenFeature client and sets evaluation context
-4. Middleware attaches client to `req.openFeatureClient`
-5. Request reaches route handler (products.ts line 43)
-6. Route calls `req.openFeatureClient.getBooleanDetails()`
-7. OpenFeature SDK calls `GrowthBookServerProvider.resolveBooleanEvaluation()`
-8. Provider creates scoped GrowthBook instance with user context
-9. Provider evaluates flag and extracts experiment metadata
-10. Provider returns result to OpenFeature SDK
-11. Route handler uses flag value and builds experiment metadata
-12. Response sent to frontend with experiments object
+1. Request arrives → `userContextMiddleware` (index.ts:27)
+2. Middleware extracts `anonymous_id` from headers (userContext.ts:18-20)
+3. Middleware builds evaluation context with user attributes (userContext.ts:26-30)
+4. Middleware attaches context to `req.evaluationContext` (userContext.ts:26)
+5. Request reaches route handler (products.ts:44)
+6. Route handler calls `OpenFeature.getClient()` to get singleton client (products.ts:46)
+7. Route calls `client.getBooleanDetails()` with `req.evaluationContext` (products.ts:47-51)
+8. OpenFeature SDK calls `GrowthBookServerProvider.resolveBooleanEvaluation()` with context (GrowthBookServerProvider.ts:44)
+9. Provider creates scoped GrowthBook instance from evaluation context (GrowthBookServerProvider.ts:52)
+10. Provider evaluates flag and extracts experiment metadata (GrowthBookServerProvider.ts:53-64)
+11. Provider returns result to OpenFeature SDK (GrowthBookServerProvider.ts:66-73)
+12. Route handler uses flag value and builds experiment metadata (products.ts:52-68)
+13. Response sent to frontend with experiments object (products.ts:81-97)
 
 **Why This Architecture**:
 - **Vendor Portability**: Route handlers use OpenFeature API, not GrowthBook API directly
 - **Clean Separation**: Provider encapsulates all GrowthBook-specific logic
 - **Preserved Tracking**: Experiment metadata flows through to frontend for proper exposure tracking
 - **Per-Request Isolation**: Each request has its own evaluation context for accurate targeting
+- **Thread-Safe**: Singleton client with per-evaluation context prevents race conditions in concurrent requests

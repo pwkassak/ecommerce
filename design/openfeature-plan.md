@@ -243,3 +243,113 @@ app.listen(PORT, async () => {
 - No frontend changes required
 - Experiment tracking continues to work as-is
 - API contract remains the same
+
+## Implementation Architecture
+
+This section explains how the OpenFeature implementation works now that it's complete.
+
+### 1. Server Initialization (`backend/src/index.ts`)
+
+**Lines 6, 65-71**: OpenFeature initialization on server startup
+- Imports `OpenFeature` from `@openfeature/server-sdk`
+- Calls `featureFlagService.initialize()` to load features from GrowthBook
+- Calls `featureFlagService.getProvider()` to create custom provider instance
+- Calls `OpenFeature.setProviderAndWait(provider)` to register provider globally
+- **Why**: OpenFeature must be initialized once at startup with a provider before any feature evaluation can occur
+
+### 2. Feature Flag Service (`backend/src/services/featureFlags.ts`)
+
+**Lines 1-2**: Imports
+- Imports `GrowthBookClient` from GrowthBook SDK
+- Imports custom `GrowthBookServerProvider` from OpenFeature directory
+
+**Lines 7-20**: `initialize()` method
+- Creates `GrowthBookClient` instance with API host and client key
+- Calls `gbClient.init()` to fetch features from GrowthBook API
+- **Why**: `GrowthBookClient` must load feature definitions before evaluations can occur
+
+**Lines 22-29**: `getProvider()` method
+- Returns new instance of `GrowthBookServerProvider` wrapping the `GrowthBookClient`
+- **Why**: Provides the custom provider to OpenFeature for registration
+
+### 3. Custom OpenFeature Provider (`backend/src/services/openfeature/GrowthBookServerProvider.ts`)
+
+**Lines 13-18**: Provider metadata
+- `runsOn = 'server'`: Ensures provider is only used in server context
+- `metadata.name`: Identifies provider as "GrowthBook Server Provider"
+- **Why**: OpenFeature requires providers to declare their runtime environment
+
+**Lines 20-23**: Constructor
+- Accepts `GrowthBookClient` instance
+- **Why**: Provider needs access to initialized GrowthBook client to evaluate features
+
+**Lines 28-42**: `createScopedInstance()` private method
+- Converts OpenFeature `EvaluationContext` to GrowthBook attributes format
+- Maps `targetingKey` to `id` for GrowthBook compatibility
+- Creates request-scoped `GrowthBook` instance with `trackingCallback: undefined`
+- **Why**: Each request needs isolated evaluation context; tracking suppressed because frontend handles exposure events
+
+**Lines 44-76**: `resolveBooleanEvaluation()` method
+- Creates scoped GrowthBook instance from evaluation context
+- Calls `gb.evalFeature(flagKey)` to evaluate feature flag
+- Extracts experiment metadata from GrowthBook result
+- Returns OpenFeature-compatible `ResolutionDetails` object with `flagMetadata`
+- **Why**: Translates between OpenFeature API and GrowthBook SDK; preserves experiment metadata for frontend tracking
+
+**Lines 78-157**: Other resolution methods (`resolveStringEvaluation`, `resolveNumberEvaluation`, `resolveObjectEvaluation`)
+- Follow same pattern as boolean evaluation
+- **Why**: OpenFeature spec requires providers to support all flag types
+
+### 4. User Context Middleware (`backend/src/middleware/userContext.ts`)
+
+**Lines 2**: Imports
+- Imports `OpenFeature` and `Client` from OpenFeature SDK
+- **Why**: Middleware creates OpenFeature clients for each request
+
+**Lines 5-9**: TypeScript interface extension
+- Extends Express `Request` to include `openFeatureClient` property
+- **Why**: Attaches OpenFeature client to request object for use in route handlers
+
+**Lines 23-40**: Middleware logic
+- Extracts `anonymous_id` from request headers
+- Calls `OpenFeature.getClient()` to get OpenFeature client instance
+- Calls `client.setContext()` with user attributes (`targetingKey`, `anonymous_id`, `id`)
+- Attaches client to `req.openFeatureClient`
+- **Why**: Each request needs its own evaluation context based on the user making the request; context is set per-request to enable user-specific targeting
+
+### 5. Route Handler (`backend/src/routes/products.ts`)
+
+**Lines 43-77**: Feature flag evaluation
+- Checks if `req.openFeatureClient` exists (user has anonymous ID)
+- Calls `await req.openFeatureClient.getBooleanDetails('remove-quick-links', false)`
+- Extracts `details.value` for boolean flag result
+- Extracts `details.flagMetadata.experimentId` and `details.flagMetadata.variationId`
+- Builds `experiments` object for API response to frontend
+- Uses flag value to conditionally include categories in response
+- **Why**: `getBooleanDetails()` returns both the flag value and metadata; metadata contains experiment info needed for frontend exposure tracking; async evaluation allows provider to perform I/O if needed
+
+**Lines 79-95**: API response construction
+- Includes `experiments` object in response when `featured === 'true'`
+- **Why**: Frontend needs experiment metadata to track exposure events when content is viewed
+
+### 6. Data Flow Summary
+
+**Request Flow**:
+1. Request arrives → `userContextMiddleware` (line 26 in index.ts)
+2. Middleware extracts `anonymous_id` from headers
+3. Middleware gets OpenFeature client and sets evaluation context
+4. Middleware attaches client to `req.openFeatureClient`
+5. Request reaches route handler (products.ts line 43)
+6. Route calls `req.openFeatureClient.getBooleanDetails()`
+7. OpenFeature SDK calls `GrowthBookServerProvider.resolveBooleanEvaluation()`
+8. Provider creates scoped GrowthBook instance with user context
+9. Provider evaluates flag and extracts experiment metadata
+10. Provider returns result to OpenFeature SDK
+11. Route handler uses flag value and builds experiment metadata
+12. Response sent to frontend with experiments object
+
+**Why This Architecture**:
+- **Vendor Portability**: Route handlers use OpenFeature API, not GrowthBook API directly
+- **Clean Separation**: Provider encapsulates all GrowthBook-specific logic
+- **Preserved Tracking**: Experiment metadata flows through to frontend for proper exposure tracking
+- **Per-Request Isolation**: Each request has its own evaluation context for accurate targeting

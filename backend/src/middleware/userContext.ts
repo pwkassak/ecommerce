@@ -1,12 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { GrowthBook } from '@growthbook/growthbook';
-import { featureFlagService } from '../services/featureFlags.js';
+import { OpenFeature, Client } from '@openfeature/server-sdk';
 
-// Extend the Request interface to include anonymousId and growthbook
+// Extend the Request interface to include anonymousId and openFeatureClient
 declare module 'express-serve-static-core' {
   interface Request {
     anonymousId?: string;
-    growthbook?: GrowthBook;
+    openFeatureClient?: Client;
   }
 }
 
@@ -20,15 +19,22 @@ export const userContextMiddleware = (
                      req.cookies?.anonymous_id ||
                      null;
 
-  // Create a request-scoped GrowthBook instance if we have an anonymousId
+  // Create an OpenFeature client with evaluation context if we have an anonymousId
   if (req.anonymousId) {
     try {
-      req.growthbook = featureFlagService.createScopedInstance({
+      const client = OpenFeature.getClient();
+
+      // Set evaluation context for this request
+      // Note: Context is set synchronously on the client, not as a promise
+      client.setContext({
+        targetingKey: req.anonymousId,
         anonymous_id: req.anonymousId,
         id: req.anonymousId
       });
+
+      req.openFeatureClient = client;
     } catch (error) {
-      console.error('Failed to create scoped GrowthBook instance:', error);
+      console.error('Failed to create OpenFeature client:', error);
       // Continue without feature flags rather than blocking the request
     }
   }

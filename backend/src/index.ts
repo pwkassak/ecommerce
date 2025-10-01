@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { OpenFeature } from '@openfeature/server-sdk';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import analyticsRoutes from './routes/analytics.js';
@@ -63,7 +64,12 @@ app.listen(PORT, async () => {
   // Initialize feature flag service
   try {
     await featureFlagService.initialize();
+
+    // Initialize OpenFeature with GrowthBook provider
+    const provider = featureFlagService.getProvider();
+    await OpenFeature.setProviderAndWait(provider);
+    console.log('✅ OpenFeature initialized with GrowthBook provider');
   } catch (error) {
-    console.error('Failed to initialize feature flag service:', error);
+    console.error('Failed to initialize feature flags:', error);
   }
 });

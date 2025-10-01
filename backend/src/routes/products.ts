@@ -40,33 +40,26 @@ router.get('/', async (req: Request, res: Response) => {
     let experiments: any = {};
     let categories: any[] = [];
 
-    if (featured === 'true' && req.growthbook) {
-      // Evaluate feature flag using request-scoped GrowthBook instance
-      const result = req.growthbook.evalFeature('remove-quick-links');
-      const shouldHideCategories = result.value;
+    if (featured === 'true' && req.openFeatureClient) {
+      // Evaluate feature flag using OpenFeature API
+      const details = await req.openFeatureClient.getBooleanDetails('remove-quick-links', false);
+      const shouldHideCategories = details.value;
 
-      // DEBUG: Log what GrowthBook is returning
-      console.log('🔍 GrowthBook evalFeature result:', {
-        value: result.value,
-        source: result.source,
-        hasExperiment: !!result.experiment,
-        experimentKey: result.experiment?.key,
-        experimentName: result.experiment?.name,
-        hasExperimentResult: !!result.experimentResult,
-        variationId: result.experimentResult?.variationId,
-        inExperiment: result.experimentResult?.inExperiment,
-        ruleId: result.ruleId
+      // DEBUG: Log what OpenFeature is returning
+      console.log('🔍 OpenFeature getBooleanDetails result:', {
+        value: details.value,
+        reason: details.reason,
+        variant: details.variant,
+        flagMetadata: details.flagMetadata
       });
-      console.log('🔍 Full experiment object:', JSON.stringify(result.experiment, null, 2));
-      console.log('🔍 Full experimentResult object:', JSON.stringify(result.experimentResult, null, 2));
 
       // Build experiment metadata for frontend tracking
-      // Only include if user is actually in an experiment with valid experiment key
-      if (result.experimentResult && result.experiment && result.experiment.key) {
+      // Only include if we have experiment metadata from the provider
+      if (details.flagMetadata?.experimentId) {
         experiments = {
           'remove-quick-links': {
-            experiment_id: result.experiment.key,
-            variation_id: String(result.experimentResult.variationId ?? result.experimentResult.key ?? ''),
+            experiment_id: details.flagMetadata.experimentId,
+            variation_id: String(details.flagMetadata.variationId ?? ''),
             value: shouldHideCategories
           }
         };

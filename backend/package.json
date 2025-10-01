@@ -16,6 +16,7 @@
   "dependencies": {
     "@clickhouse/client": "^0.2.10",
     "@growthbook/growthbook": "^1.6.1",
+    "@openfeature/server-sdk": "^1.19.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",

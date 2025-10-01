@@ -1,4 +1,5 @@
-import { GrowthBookClient, GrowthBook } from '@growthbook/growthbook';
+import { GrowthBookClient } from '@growthbook/growthbook';
+import { GrowthBookServerProvider } from './openfeature/index.js';
 
 class FeatureFlagService {
   private gbClient!: GrowthBookClient;
@@ -18,18 +19,13 @@ class FeatureFlagService {
     console.log('✅ Feature flag service initialized with GrowthBookClient');
   }
 
-  createScopedInstance(attributes: Record<string, any>): GrowthBook {
+  getProvider(): GrowthBookServerProvider {
     if (!this.gbClient) {
       console.warn('Feature flag service not initialized');
       throw new Error('Feature flag service not initialized');
     }
 
-    // Create a request-scoped GrowthBook instance
-    // trackingCallback is intentionally undefined to suppress automatic tracking
-    return this.gbClient.createScopedInstance({
-      attributes,
-      trackingCallback: undefined  // SUPPRESS automatic tracking
-    });
+    return new GrowthBookServerProvider(this.gbClient);
   }
 }
 
